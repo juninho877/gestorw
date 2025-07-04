@@ -10,8 +10,40 @@ if (!isset($_SESSION['user_id'])) {
     redirect("login.php");
 }
 
+// VERIFICAÇÃO INICIAL: Se o usuário já tem assinatura ativa, redirecionar para o dashboard
 $database = new Database();
 $db = $database->getConnection();
+
+// Carregar informações atualizadas do usuário
+$current_user = new User($db);
+$current_user->id = $_SESSION['user_id'];
+
+// Buscar dados completos do usuário no banco
+$query = "SELECT id, name, email, plan_id, role, subscription_status, trial_ends_at, plan_expires_at
+          FROM users WHERE id = :id LIMIT 1";
+$stmt = $db->prepare($query);
+$stmt->bindParam(':id', $_SESSION['user_id']);
+$stmt->execute();
+
+if ($stmt->rowCount() > 0) {
+    $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Atualizar propriedades do objeto User
+    $current_user->name = $user_data['name'];
+    $current_user->email = $user_data['email'];
+    $current_user->plan_id = $user_data['plan_id'];
+    $current_user->role = $user_data['role'] ?? 'user';
+    $current_user->subscription_status = $user_data['subscription_status'];
+    $current_user->trial_ends_at = $user_data['trial_ends_at'];
+    $current_user->plan_expires_at = $user_data['plan_expires_at'];
+    
+    // Verificar se o plano está ativo
+    if ($current_user->isPlanActive()) {
+        // Se o usuário já tem assinatura ativa, redirecionar para o dashboard
+        $_SESSION['message'] = "Sua assinatura já está ativa! Aproveite todas as funcionalidades do sistema.";
+        redirect("dashboard/index.php");
+    }
+}
 
 $message = '';
 $error = '';
@@ -46,6 +78,12 @@ $plan = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$plan) {
     $_SESSION['error'] = "Plano não encontrado.";
     redirect("index.php");
+}
+
+// Verificar se o usuário já tem uma assinatura ativa para este plano específico
+if ($current_user->isPlanActive() && $current_user->plan_id == $plan_id) {
+    $_SESSION['message'] = "Você já possui uma assinatura ativa para este plano!";
+    redirect("dashboard/index.php");
 }
 
 // Verificar se já existe um pagamento pendente para este usuário e plano
@@ -126,9 +164,10 @@ if ($stmt->rowCount() > 0) {
 }
 
 // Carregar informações do usuário
-$user = new User($db);
-$user->id = $_SESSION['user_id'];
-$user->readOne();
+$user = $current_user;
+if (empty($user->email)) {
+    $user->readOne();
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

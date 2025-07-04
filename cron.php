@@ -21,8 +21,6 @@ require_once __DIR__ . '/classes/MessageTemplate.php';
 require_once __DIR__ . '/classes/MessageHistory.php';
 require_once __DIR__ . '/classes/WhatsAppAPI.php';
 require_once __DIR__ . '/classes/AppSettings.php';
-require_once __DIR__ . '/classes/Payment.php';
-require_once __DIR__ . '/classes/MercadoPagoAPI.php';
 
 // Log de início
 error_log("=== CRON JOB STARTED ===");
@@ -58,9 +56,6 @@ try {
     $messageHistory = new MessageHistory($db);
     $whatsapp = new WhatsAppAPI();
     $appSettings = new AppSettings($db);
-    
-    // NOVA FUNCIONALIDADE: Verificar pagamentos pendentes
-    checkPendingPayments($db);
     
     // Verificar se a cobrança automática está ativa (globalmente)
     if (!$appSettings->isAutoBillingEnabled()) {
@@ -264,164 +259,6 @@ error_log("Errors: " . count($stats['errors']));
 
 // Enviar email de relatório para o administrador
 sendAdminReport($stats);
-
-/**
- * Verificar e processar pagamentos pendentes
- */
-function checkPendingPayments($db) {
-    error_log("=== CHECKING PENDING PAYMENTS ===");
-    
-    try {
-        // Verificar se o Mercado Pago está configurado
-        if (empty(MERCADO_PAGO_ACCESS_TOKEN)) {
-            error_log("Mercado Pago not configured, skipping payment verification");
-            return;
-        }
-        
-        $payment = new Payment($db);
-        $mercado_pago = new MercadoPagoAPI();
-        $user = new User($db);
-        
-        // Primeiro, marcar pagamentos expirados
-        $expired_count = $payment->markExpiredPayments();
-        if ($expired_count > 0) {
-            error_log("Marked $expired_count expired payments");
-        }
-        
-        // Buscar pagamentos pendentes
-        $pending_payments = $payment->getPendingPayments();
-        $payments_checked = 0;
-        $payments_approved = 0;
-        
-        while ($payment_row = $pending_payments->fetch(PDO::FETCH_ASSOC)) {
-            $payments_checked++;
-            $mp_id = $payment_row['mercado_pago_id'];
-            
-            error_log("Checking payment: " . $mp_id);
-            
-            // Consultar status no Mercado Pago
-            $mp_status = $mercado_pago->getPaymentStatus($mp_id);
-            
-            if ($mp_status['success']) {
-                $new_status = $mercado_pago->mapPaymentStatus($mp_status['status']);
-                
-                error_log("Payment $mp_id status: " . $mp_status['status'] . " -> $new_status");
-                
-                // Atualizar status no banco
-                $payment_obj = new Payment($db);
-                $payment_obj->id = $payment_row['id'];
-                
-                if ($new_status === 'approved') {
-                    // Pagamento aprovado
-                    $paid_at = $mp_status['date_approved'] ?: date('Y-m-d H:i:s');
-                    $payment_obj->updateStatus('approved', $paid_at);
-                    
-                    // Ativar assinatura do usuário
-                    $user->id = $payment_row['user_id'];
-                    if ($user->activateSubscription($payment_row['plan_id'])) {
-                        $payments_approved++;
-                        error_log("Subscription activated for user " . $payment_row['user_id']);
-                        
-                        // Enviar email de confirmação
-                        sendPaymentConfirmationEmail($payment_row, $user);
-                    }
-                    
-                } elseif ($new_status !== 'pending') {
-                    // Pagamento falhou ou foi cancelado
-                    $payment_obj->updateStatus($new_status);
-                    error_log("Payment $mp_id failed with status: $new_status");
-                }
-            } else {
-                error_log("Failed to check payment $mp_id: " . $mp_status['error']);
-            }
-            
-            // Delay para não sobrecarregar a API
-            sleep(1);
-        }
-        
-        error_log("Payment verification completed: $payments_checked checked, $payments_approved approved");
-        
-    } catch (Exception $e) {
-        error_log("Error checking payments: " . $e->getMessage());
-    }
-}
-
-/**
- * Enviar email de confirmação de pagamento
- */
-function sendPaymentConfirmationEmail($payment_data, $user) {
-    try {
-        if (!defined('ADMIN_EMAIL') || empty(ADMIN_EMAIL)) {
-            return;
-        }
-        
-        // Buscar informações do plano
-        global $db;
-        $query = "SELECT name FROM plans WHERE id = :plan_id";
-        $stmt = $db->prepare($query);
-        $stmt->bindParam(':plan_id', $payment_data['plan_id']);
-        $stmt->execute();
-        $plan = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        $subject = "Pagamento Confirmado - " . getSiteName();
-        
-        $message = "
-        <html>
-        <head>
-            <title>Pagamento Confirmado</title>
-            <style>
-                body { font-family: Arial, sans-serif; }
-                .header { background-color: #10B981; color: white; padding: 20px; text-align: center; }
-                .content { padding: 20px; }
-                .success { background-color: #D1FAE5; color: #065F46; padding: 15px; border-radius: 5px; margin: 10px 0; }
-            </style>
-        </head>
-        <body>
-            <div class='header'>
-                <h1>✅ Pagamento Confirmado!</h1>
-                <p>" . getSiteName() . "</p>
-            </div>
-            
-            <div class='content'>
-                <div class='success'>
-                    <h3>Sua assinatura foi ativada com sucesso!</h3>
-                </div>
-                
-                <p><strong>Detalhes do Pagamento:</strong></p>
-                <ul>
-                    <li><strong>Plano:</strong> " . htmlspecialchars($plan['name'] ?? 'N/A') . "</li>
-                    <li><strong>Valor:</strong> R$ " . number_format($payment_data['amount'], 2, ',', '.') . "</li>
-                    <li><strong>Data:</strong> " . date('d/m/Y H:i') . "</li>
-                </ul>
-                
-                <p>Agora você pode acessar todas as funcionalidades do sistema!</p>
-                
-                <p><a href='" . SITE_URL . "/dashboard' style='background-color: #3B82F6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Acessar Dashboard</a></p>
-            </div>
-        </body>
-        </html>";
-        
-        $headers = [
-            'MIME-Version: 1.0',
-            'Content-type: text/html; charset=UTF-8',
-            'From: ' . getSiteName() . ' <noreply@' . parse_url(SITE_URL, PHP_URL_HOST) . '>',
-            'Reply-To: ' . ADMIN_EMAIL
-        ];
-        
-        // Enviar para o usuário
-        if (!empty($user->email)) {
-            mail($user->email, $subject, $message, implode("\r\n", $headers));
-        }
-        
-        // Notificar admin
-        $admin_subject = "Novo Pagamento Recebido - " . getSiteName();
-        $admin_message = str_replace('Sua assinatura foi ativada', 'Nova assinatura ativada para ' . $user->name, $message);
-        mail(ADMIN_EMAIL, $admin_subject, $admin_message, implode("\r\n", $headers));
-        
-    } catch (Exception $e) {
-        error_log("Error sending payment confirmation email: " . $e->getMessage());
-    }
-}
 
 /**
  * Função para limpar ID da mensagem do WhatsApp removendo sufixos
