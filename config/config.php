@@ -12,8 +12,8 @@ define('EVOLUTION_API_URL', 'https://evov2.duckdns.org');
 define('EVOLUTION_API_KEY', '79Bb4lpu2TzxrSMu3SDfSGvB3MIhkur7');
 
 // Configurações do Mercado Pago
-define('MERCADO_PAGO_ACCESS_TOKEN', 'SEU_ACCESS_TOKEN_AQUI');
-define('MERCADO_PAGO_PUBLIC_KEY', 'SEU_PUBLIC_KEY_AQUI');
+define('MERCADO_PAGO_ACCESS_TOKEN', getAppSetting('mercado_pago_access_token', ''));
+define('MERCADO_PAGO_PUBLIC_KEY', getAppSetting('mercado_pago_public_key', ''));
 
 define('SITE_URL', 'https://apiteste.streamingplay.site');
 
