@@ -69,6 +69,8 @@ if ($_POST) {
                 'auto_billing_enabled' => 'boolean',
                 'whatsapp_delay_seconds' => 'number',
                 'max_retry_attempts' => 'number',
+                'mercado_pago_access_token' => 'string',
+                'mercado_pago_public_key' => 'string',
                 // Novas configurações de notificação
                 'notify_5_days_before' => 'boolean',
                 'notify_3_days_before' => 'boolean',
@@ -425,6 +427,41 @@ $timezones = [
                                                    value="<?php echo htmlspecialchars($all_settings['max_retry_attempts']['value'] ?? '3'); ?>"
                                                    class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100">
                                             <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Tentativas de reenvio para mensagens falhadas</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Configurações do Mercado Pago -->
+                                    <div class="border-t dark:border-slate-600 pt-6">
+                                        <h4 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-4">Configurações do Mercado Pago</h4>
+                                        <div class="grid grid-cols-1 gap-4">
+                                            <div>
+                                                <label for="mercado_pago_access_token" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Access Token</label>
+                                                <input type="password" name="mercado_pago_access_token" id="mercado_pago_access_token" 
+                                                       value="<?php echo htmlspecialchars($all_settings['mercado_pago_access_token']['value'] ?? ''); ?>"
+                                                       class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                                                       placeholder="APP_USR-...">
+                                                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Token de acesso do Mercado Pago para processar pagamentos</p>
+                                            </div>
+                                            
+                                            <div>
+                                                <label for="mercado_pago_public_key" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Public Key</label>
+                                                <input type="text" name="mercado_pago_public_key" id="mercado_pago_public_key" 
+                                                       value="<?php echo htmlspecialchars($all_settings['mercado_pago_public_key']['value'] ?? ''); ?>"
+                                                       class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                                                       placeholder="APP_USR-...">
+                                                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Chave pública do Mercado Pago (opcional para PIX)</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                                            <p class="text-sm text-yellow-800 dark:text-yellow-300">
+                                                <i class="fas fa-info-circle mr-2"></i>
+                                                <strong>Como obter as credenciais:</strong><br>
+                                                1. Acesse <a href="https://www.mercadopago.com.br/developers" target="_blank" class="underline">Mercado Pago Developers</a><br>
+                                                2. Vá em "Suas integrações" → "Credenciais"<br>
+                                                3. Copie o Access Token de produção<br>
+                                                4. Cole aqui para ativar os pagamentos PIX
+                                            </p>
                                         </div>
                                     </div>
                                     

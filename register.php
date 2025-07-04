@@ -24,7 +24,7 @@ if ($_POST) {
         $_SESSION['user_role'] = $user->role;
         $_SESSION['plan_id'] = $user->plan_id;
         
-        header("Location: payment.php?plan_id=" . $user->plan_id);
+        redirect("payment.php?plan_id=" . $user->plan_id);
         exit();
     } else {
         $message = "Erro ao criar conta. Tente novamente.";

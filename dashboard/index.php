@@ -71,7 +71,7 @@ $subscription_info = $current_user->getSubscriptionInfo();
                                     <p class="text-sm text-yellow-800">
                                         <strong>Período de Teste:</strong>
                                         Você tem <?php echo $subscription_info['trial_days_remaining']; ?> dias restantes do seu teste gratuito.
-                                        <a href="../payment.php?plan_id=<?php echo $_SESSION['plan_id']; ?>" class="font-medium underline">Assine agora</a>
+                                        <a href="../payment.php?plan_id=<?php echo htmlspecialchars($_SESSION['plan_id']); ?>" class="font-medium underline">Assine agora</a>
                                         para continuar usando todas as funcionalidades.
                                     </p>
                                 </div>
