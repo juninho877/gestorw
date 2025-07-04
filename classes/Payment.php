@@ -182,6 +182,71 @@ class Payment {
         $stmt->execute();
         return $stmt;
     }
+    
+    /**
+     * Buscar todos os pagamentos com informações de usuário e plano
+     */
+    public function readAll() {
+        $query = "SELECT p.*, u.name as user_name, u.email as user_email, pl.name as plan_name 
+                  FROM " . $this->table_name . " p
+                  LEFT JOIN users u ON p.user_id = u.id
+                  LEFT JOIN plans pl ON p.plan_id = pl.id
+                  ORDER BY p.created_at DESC";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt;
+    }
+    
+    /**
+     * Buscar pagamentos por status
+     */
+    public function readByStatus($status) {
+        $query = "SELECT p.*, u.name as user_name, u.email as user_email, pl.name as plan_name 
+                  FROM " . $this->table_name . " p
+                  LEFT JOIN users u ON p.user_id = u.id
+                  LEFT JOIN plans pl ON p.plan_id = pl.id
+                  WHERE p.status = :status
+                  ORDER BY p.created_at DESC";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':status', $status);
+        $stmt->execute();
+        return $stmt;
+    }
+    
+    /**
+     * Contar pagamentos por status
+     */
+    public function countByStatus($status) {
+        $query = "SELECT COUNT(*) as count FROM " . $this->table_name . " WHERE status = :status";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':status', $status);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['count'] ?? 0;
+    }
+    
+    /**
+     * Obter estatísticas de pagamentos
+     */
+    public function getStatistics() {
+        $query = "SELECT 
+                    COUNT(*) as total_payments,
+                    SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_count,
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+                    SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count,
+                    SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count,
+                    SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END) as total_revenue,
+                    SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as today_count,
+                    SUM(CASE WHEN DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as week_count,
+                    SUM(CASE WHEN DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as month_count
+                  FROM " . $this->table_name;
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 
     /**
      * Validar dados do pagamento

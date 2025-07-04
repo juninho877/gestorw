@@ -111,6 +111,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <span class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">Admin</span>
             </a>
             
+            <a href="payments.php" class="sidebar-link <?php echo $current_page == 'payments.php' ? 'bg-red-600 text-white active' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                <i class="fas fa-credit-card mr-3"></i>
+                Gerenciar Pagamentos
+                <span class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">Admin</span>
+            </a>
+            
             <a href="settings.php" class="sidebar-link <?php echo $current_page == 'settings.php' ? 'bg-red-600 text-white active' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                 <i class="fas fa-cog mr-3"></i>
                 Configurações Sistema
