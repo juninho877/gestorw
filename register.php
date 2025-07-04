@@ -8,32 +8,72 @@ $plan_id = isset($_GET['plan']) ? (int)$_GET['plan'] : 1;
 if ($_POST) {
     $database = new Database();
     $db = $database->getConnection();
+    $error = '';
     $user = new User($db);
     
-    $user->name = $_POST['name'];
-    $user->email = $_POST['email'];
-    $user->password = $_POST['password'];
-    $user->phone = $_POST['phone'];
-    $user->plan_id = $_POST['plan_id'];
-    $user->role = 'user'; // Novos usuários sempre começam como 'user'
+    // Validar dados do formulário
+    $name = trim($_POST['name']);
+    $email = trim($_POST['email']);
+    $password = trim($_POST['password']);
+    $phone = trim($_POST['phone']);
+    $plan_id = $_POST['plan_id'];
     
-    if ($user->create()) {
-        // Iniciar sessão para o novo usuário
-        $_SESSION['user_id'] = $user->id;
-        $_SESSION['user_name'] = $user->name;
-        $_SESSION['user_email'] = $user->email;
-        $_SESSION['user_role'] = $user->role;
-        $_SESSION['plan_id'] = $user->plan_id;
-        $_SESSION['subscription_status'] = $user->subscription_status;
-        $_SESSION['trial_ends_at'] = $user->trial_ends_at;
-        $_SESSION['whatsapp_connected'] = false;
+    // Validar email
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Por favor, informe um endereço de email válido.";
+    }
+    // Validar nome
+    elseif (empty($name)) {
+        $error = "Por favor, informe seu nome completo.";
+    }
+    // Validar senha (mínimo 6 caracteres)
+    elseif (empty($password) || strlen($password) < 6) {
+        $error = "A senha deve ter pelo menos 6 caracteres.";
+    }
+    // Validar telefone
+    elseif (empty($phone)) {
+        $error = "Por favor, informe seu telefone/WhatsApp.";
+    }
+    // Verificar se email já existe
+    else {
+        $check_query = "SELECT id FROM users WHERE email = :email LIMIT 1";
+        $check_stmt = $db->prepare($check_query);
+        $check_stmt->bindParam(':email', $email);
+        $check_stmt->execute();
         
-        // Redirecionar para o dashboard com período de teste ativo
-        $_SESSION['message'] = "Conta criada com sucesso! Você tem 3 dias de teste gratuito para explorar todas as funcionalidades.";
-        redirect("dashboard/index.php");
-        exit();
-    } else {
-        $message = "Erro ao criar conta. Tente novamente.";
+        if ($check_stmt->rowCount() > 0) {
+            $error = "Este email já está cadastrado. Por favor, use outro email ou faça login.";
+        }
+    }
+    
+    // Se não houver erros, criar o usuário
+    if (empty($error)) {
+        $user = new User($db);
+        $user->name = $name;
+        $user->email = $email;
+        $user->password = $password;
+        $user->phone = $phone;
+        $user->plan_id = $plan_id;
+        $user->role = 'user'; // Novos usuários sempre começam como 'user'
+        
+        if ($user->create()) {
+            // Iniciar sessão para o novo usuário
+            $_SESSION['user_id'] = $user->id;
+            $_SESSION['user_name'] = $user->name;
+            $_SESSION['user_email'] = $user->email;
+            $_SESSION['user_role'] = $user->role;
+            $_SESSION['plan_id'] = $user->plan_id;
+            $_SESSION['subscription_status'] = $user->subscription_status;
+            $_SESSION['trial_ends_at'] = $user->trial_ends_at;
+            $_SESSION['whatsapp_connected'] = false;
+            
+            // Redirecionar para o dashboard com período de teste ativo
+            $_SESSION['message'] = "Conta criada com sucesso! Você tem 3 dias de teste gratuito para explorar todas as funcionalidades.";
+            redirect("dashboard/index.php");
+            exit();
+        } else {
+            $error = "Erro ao criar conta. Tente novamente.";
+        }
     }
 }
 
@@ -70,6 +110,15 @@ $plan = $stmt->fetch(PDO::FETCH_ASSOC);
                 </p>
             </div>
             
+            <?php if (!empty($error)): ?>
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <span><?php echo htmlspecialchars($error); ?></span>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
             <?php if ($message): ?>
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
                     <?php echo $message; ?>
@@ -89,12 +138,17 @@ $plan = $stmt->fetch(PDO::FETCH_ASSOC);
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Email</label>
                         <input id="email" name="email" type="email" required 
+                               value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>"
                                class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                            Informe um email válido para acesso ao sistema
+                        </p>
                     </div>
                     
                     <div>
                         <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Telefone/WhatsApp</label>
                         <input id="phone" name="phone" type="tel" required 
+                               value="<?php echo isset($_POST['phone']) ? htmlspecialchars($_POST['phone']) : ''; ?>"
                                class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                                placeholder="(11) 99999-9999">
                     </div>
@@ -103,6 +157,9 @@ $plan = $stmt->fetch(PDO::FETCH_ASSOC);
                         <label for="password" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Senha</label>
                         <input id="password" name="password" type="password" required minlength="6"
                                class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                            Mínimo de 6 caracteres
+                        </p>
                     </div>
 
                     <div>
