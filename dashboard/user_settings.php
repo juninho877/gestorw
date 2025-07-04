@@ -253,6 +253,134 @@ $whatsapp_connected = $_SESSION['whatsapp_connected'] ?? false;
                         </div>
                         <?php endif; ?>
 
+                        <!-- Seção de Assinatura (apenas para usuários não-admin) -->
+                        <?php if (!$is_admin): ?>
+                        <div class="mt-8 bg-white dark:bg-slate-800 shadow-md rounded-lg overflow-hidden">
+                            <div class="px-6 py-6 sm:p-8">
+                                <h3 class="text-xl font-semibold text-gray-900 dark:text-slate-100 mb-4">Minha Assinatura</h3>
+                                
+                                <?php
+                                // Carregar informações atualizadas da assinatura
+                                $user_obj = new User($db);
+                                $user_obj->id = $_SESSION['user_id'];
+                                $user_obj->readOne();
+                                $subscription_info = $user_obj->getSubscriptionInfo();
+                                
+                                // Buscar informações do plano
+                                $plan_query = "SELECT * FROM plans WHERE id = :plan_id";
+                                $plan_stmt = $db->prepare($plan_query);
+                                $plan_stmt->bindParam(':plan_id', $_SESSION['plan_id']);
+                                $plan_stmt->execute();
+                                $current_plan = $plan_stmt->fetch(PDO::FETCH_ASSOC);
+                                ?>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Status da Assinatura -->
+                                    <div class="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg">
+                                        <h4 class="text-sm font-medium text-gray-900 dark:text-slate-100 mb-2">Status Atual</h4>
+                                        <div class="space-y-2">
+                                            <div class="flex items-center">
+                                                <?php if ($subscription_info['is_in_trial']): ?>
+                                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                        <i class="fas fa-gift mr-1"></i>
+                                                        Período de Teste
+                                                    </span>
+                                                <?php elseif ($subscription_info['status'] === 'active'): ?>
+                                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                        <i class="fas fa-check-circle mr-1"></i>
+                                                        Assinatura Ativa
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                                        <i class="fas fa-times-circle mr-1"></i>
+                                                        Expirada
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                            
+                                            <?php if ($subscription_info['is_in_trial']): ?>
+                                                <p class="text-sm text-gray-600 dark:text-slate-400">
+                                                    <strong><?php echo $subscription_info['trial_days_remaining']; ?> dias restantes</strong> do seu teste gratuito
+                                                </p>
+                                                <p class="text-xs text-gray-500 dark:text-slate-500">
+                                                    Expira em: <?php echo date('d/m/Y H:i', strtotime($subscription_info['trial_ends_at'])); ?>
+                                                </p>
+                                            <?php elseif ($subscription_info['status'] === 'active'): ?>
+                                                <p class="text-sm text-gray-600 dark:text-slate-400">
+                                                    Válida até: <?php echo !empty($subscription_info['plan_expires_at']) ? date('d/m/Y H:i', strtotime($subscription_info['plan_expires_at'])) : 'Indefinido'; ?>
+                                                </p>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Informações do Plano -->
+                                    <div class="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg">
+                                        <h4 class="text-sm font-medium text-gray-900 dark:text-slate-100 mb-2">Plano Atual</h4>
+                                        <div class="space-y-2">
+                                            <div>
+                                                <p class="text-lg font-semibold text-gray-900 dark:text-slate-100">
+                                                    <?php echo htmlspecialchars($current_plan['name'] ?? 'Plano não encontrado'); ?>
+                                                </p>
+                                                <p class="text-sm text-gray-600 dark:text-slate-400">
+                                                    R$ <?php echo number_format($current_plan['price'] ?? 0, 2, ',', '.'); ?>/mês
+                                                </p>
+                                            </div>
+                                            <?php if (!empty($current_plan['description'])): ?>
+                                                <p class="text-xs text-gray-500 dark:text-slate-500">
+                                                    <?php echo htmlspecialchars($current_plan['description']); ?>
+                                                </p>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Ações -->
+                                <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                                    <?php if ($subscription_info['is_in_trial'] || $subscription_info['status'] === 'expired'): ?>
+                                        <a href="../payment.php?plan_id=<?php echo htmlspecialchars($_SESSION['plan_id']); ?>" 
+                                           class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150">
+                                            <i class="fas fa-credit-card mr-2"></i>
+                                            <?php if ($subscription_info['is_in_trial']): ?>
+                                                Assinar Agora
+                                            <?php else: ?>
+                                                Renovar Assinatura
+                                            <?php endif; ?>
+                                        </a>
+                                    <?php elseif ($subscription_info['status'] === 'active'): ?>
+                                        <a href="../payment.php?plan_id=<?php echo htmlspecialchars($_SESSION['plan_id']); ?>" 
+                                           class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-slate-600 text-sm font-medium rounded-md text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150">
+                                            <i class="fas fa-sync-alt mr-2"></i>
+                                            Renovar Assinatura
+                                        </a>
+                                    <?php endif; ?>
+                                    
+                                    <a href="../index.php#pricing" 
+                                       class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-slate-600 text-sm font-medium rounded-md text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150">
+                                        <i class="fas fa-eye mr-2"></i>
+                                        Ver Outros Planos
+                                    </a>
+                                </div>
+                                
+                                <?php if ($subscription_info['is_in_trial']): ?>
+                                <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-info-circle text-blue-500"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <h4 class="text-sm font-medium text-blue-800 dark:text-blue-300">Aproveite seu período de teste!</h4>
+                                            <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                                                Durante o teste, você tem acesso completo a todas as funcionalidades. 
+                                                Conecte seu WhatsApp, cadastre clientes e configure a automação de cobrança.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
                         <!-- Configurações de Notificação -->
                         <div class="mt-8 bg-white dark:bg-slate-800 shadow-md rounded-lg overflow-hidden">
                             <div class="px-6 py-6 sm:p-8">

@@ -17,16 +17,24 @@ class MercadoPagoAPI {
     /**
      * Criar um pagamento PIX
      */
-    public function createPixPayment($amount, $description, $external_reference = null) {
+    public function createPixPayment($amount, $description, $external_reference = null, $payer_email = null) {
         $url = $this->api_url . '/v1/payments';
+        
+        // Email do pagador - usar o fornecido ou um genérico
+        $email = $payer_email ?: 'cliente@' . parse_url(SITE_URL, PHP_URL_HOST);
         
         $payment_data = [
             'transaction_amount' => (float)$amount,
             'description' => $description,
             'payment_method_id' => 'pix',
             'payer' => [
-                'email' => 'test@test.com' // Email genérico para PIX
-            ]
+                'email' => $email,
+                'identification' => [
+                    'type' => 'CPF',
+                    'number' => '11111111111' // CPF genérico para PIX
+                ]
+            ],
+            'notification_url' => SITE_URL . '/webhook/mercado_pago.php'
         ];
         
         if ($external_reference) {
@@ -43,12 +51,12 @@ class MercadoPagoAPI {
                 'qr_code_base64' => $response['data']['point_of_interaction']['transaction_data']['qr_code_base64'] ?? null,
                 'ticket_url' => $response['data']['point_of_interaction']['transaction_data']['ticket_url'] ?? null,
                 'status' => $response['data']['status'],
-                'expires_at' => $response['data']['date_of_expiration'] ?? null
+                'expires_at' => $response['data']['date_of_expiration'] ?? date('Y-m-d H:i:s', strtotime('+30 minutes'))
             ];
         } else {
             return [
                 'success' => false,
-                'error' => $response['data']['message'] ?? 'Erro ao criar pagamento',
+                'error' => $this->extractErrorMessage($response['data']),
                 'details' => $response['data']
             ];
         }
@@ -148,6 +156,29 @@ class MercadoPagoAPI {
         ];
         
         return $status_map[$mp_status] ?? 'failed';
+    }
+    
+    /**
+     * Extrair mensagem de erro mais amigável
+     */
+    private function extractErrorMessage($error_data) {
+        if (isset($error_data['message'])) {
+            return $error_data['message'];
+        }
+        
+        if (isset($error_data['cause']) && is_array($error_data['cause'])) {
+            $causes = [];
+            foreach ($error_data['cause'] as $cause) {
+                if (isset($cause['description'])) {
+                    $causes[] = $cause['description'];
+                }
+            }
+            if (!empty($causes)) {
+                return implode(', ', $causes);
+            }
+        }
+        
+        return 'Erro ao processar pagamento. Verifique suas credenciais do Mercado Pago.';
     }
 }
 ?>

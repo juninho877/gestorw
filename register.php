@@ -18,13 +18,19 @@ if ($_POST) {
     $user->role = 'user'; // Novos usuários sempre começam como 'user'
     
     if ($user->create()) {
+        // Iniciar sessão para o novo usuário
         $_SESSION['user_id'] = $user->id;
         $_SESSION['user_name'] = $user->name;
         $_SESSION['user_email'] = $user->email;
         $_SESSION['user_role'] = $user->role;
         $_SESSION['plan_id'] = $user->plan_id;
+        $_SESSION['subscription_status'] = $user->subscription_status;
+        $_SESSION['trial_ends_at'] = $user->trial_ends_at;
+        $_SESSION['whatsapp_connected'] = false;
         
-        redirect("payment.php?plan_id=" . $user->plan_id);
+        // Redirecionar para o dashboard com período de teste ativo
+        $_SESSION['message'] = "Conta criada com sucesso! Você tem 3 dias de teste gratuito para explorar todas as funcionalidades.";
+        redirect("dashboard/index.php");
         exit();
     } else {
         $message = "Erro ao criar conta. Tente novamente.";
@@ -58,7 +64,9 @@ $plan = $stmt->fetch(PDO::FETCH_ASSOC);
                     Crie sua conta
                 </h2>
                 <p class="mt-2 text-center text-sm text-gray-600 dark:text-slate-400">
-                    Plano selecionado: <strong><?php echo $plan['name']; ?></strong> - R$ <?php echo number_format($plan['price'], 2, ',', '.'); ?>/mês
+                    Plano selecionado: <strong><?php echo htmlspecialchars($plan['name']); ?></strong> - R$ <?php echo number_format($plan['price'], 2, ',', '.'); ?>/mês
+                    <br>
+                    <span class="text-green-600 font-medium">3 dias de teste gratuito incluídos!</span>
                 </p>
             </div>
             
@@ -100,7 +108,8 @@ $plan = $stmt->fetch(PDO::FETCH_ASSOC);
                     <div>
                         <button type="submit" 
                                 class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            Criar Conta e Prosseguir para Pagamento
+                            <i class="fas fa-user-plus mr-2"></i>
+                            Criar Conta e Começar Teste Gratuito
                         </button>
                     </div>
                     

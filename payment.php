@@ -99,14 +99,14 @@ if ($stmt->rowCount() > 0) {
             $payment->status = 'pending';
             $payment->payment_method = 'pix';
             $payment->mercado_pago_id = $mp_response['payment_id'];
-            $payment->qr_code = $mp_response['qr_code'];
+            $payment->qr_code = $mp_response['qr_code_base64']; // Salvar a imagem base64
             $payment->pix_code = $mp_response['qr_code']; // PIX copia e cola
             $payment->expires_at = $mp_response['expires_at'] ?: date('Y-m-d H:i:s', strtotime('+30 minutes'));
             
             if ($payment->create()) {
                 $payment_data = [
                     'payment_id' => $mp_response['payment_id'],
-                    'qr_code' => $mp_response['qr_code'],
+                    'qr_code' => $mp_response['qr_code'], // Código PIX para copia e cola
                     'qr_code_base64' => $mp_response['qr_code_base64'],
                     'pix_code' => $mp_response['qr_code'],
                     'amount' => $plan['price'],
@@ -190,10 +190,17 @@ $user->readOne();
                 </div>
 
                 <!-- QR Code -->
-                <?php if (!empty($payment_data['qr_code_base64'])): ?>
+                <?php if (!empty($payment_data['qr_code_base64']) || !empty($existing_payment['qr_code'])): ?>
                 <div class="text-center mb-6">
                     <div class="inline-block p-4 bg-white rounded-lg shadow-sm">
-                        <img src="data:image/png;base64,<?php echo $payment_data['qr_code_base64']; ?>" 
+                        <?php 
+                        $qr_image = $payment_data['qr_code_base64'] ?? $existing_payment['qr_code'] ?? '';
+                        // Se a imagem não tem o prefixo data:image, adicionar
+                        if ($qr_image && !str_starts_with($qr_image, 'data:image')) {
+                            $qr_image = 'data:image/png;base64,' . $qr_image;
+                        }
+                        ?>
+                        <img src="<?php echo $qr_image; ?>" 
                              alt="QR Code PIX" 
                              class="mx-auto"
                              style="max-width: 250px; height: auto;">
@@ -209,7 +216,7 @@ $user->readOne();
                     <div class="flex">
                         <input type="text" 
                                id="pixCode" 
-                               value="<?php echo htmlspecialchars($payment_data['pix_code']); ?>" 
+                               value="<?php echo htmlspecialchars($payment_data['pix_code'] ?? $existing_payment['pix_code'] ?? ''); ?>" 
                                readonly
                                class="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-l-md bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-slate-100 text-sm">
                         <button onclick="copyPixCode()" 
@@ -225,13 +232,13 @@ $user->readOne();
                         <div>
                             <span class="text-gray-600 dark:text-slate-400">Valor:</span>
                             <span class="font-semibold text-gray-900 dark:text-slate-100 ml-2">
-                                R$ <?php echo number_format($payment_data['amount'], 2, ',', '.'); ?>
+                                R$ <?php echo number_format($payment_data['amount'] ?? $existing_payment['amount'] ?? 0, 2, ',', '.'); ?>
                             </span>
                         </div>
                         <div>
                             <span class="text-gray-600 dark:text-slate-400">Expira em:</span>
                             <span class="font-semibold text-gray-900 dark:text-slate-100 ml-2" id="countdown">
-                                <?php echo date('H:i', strtotime($payment_data['expires_at'])); ?>
+                                <?php echo date('H:i', strtotime($payment_data['expires_at'] ?? $existing_payment['expires_at'] ?? '')); ?>
                             </span>
                         </div>
                     </div>
@@ -331,8 +338,11 @@ $user->readOne();
         }, 30000);
 
         // Countdown timer
-        <?php if ($payment_data && $payment_data['expires_at']): ?>
-        const expiresAt = new Date('<?php echo date('c', strtotime($payment_data['expires_at'])); ?>');
+        <?php 
+        $expires_at = $payment_data['expires_at'] ?? $existing_payment['expires_at'] ?? '';
+        if ($expires_at): 
+        ?>
+        const expiresAt = new Date('<?php echo date('c', strtotime($expires_at)); ?>');
         
         function updateCountdown() {
             const now = new Date();

@@ -67,6 +67,31 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 Minhas Configurações
             </a>
             
+            <?php if (!$is_admin): ?>
+                <?php 
+                // Verificar se precisa mostrar opção de assinatura
+                $show_subscription_link = false;
+                if (isset($_SESSION['subscription_status'])) {
+                    $show_subscription_link = ($_SESSION['subscription_status'] === 'trial' || $_SESSION['subscription_status'] === 'expired');
+                }
+                ?>
+                <?php if ($show_subscription_link): ?>
+                <a href="../payment.php?plan_id=<?php echo htmlspecialchars($_SESSION['plan_id'] ?? '1'); ?>" class="sidebar-link text-yellow-300 hover:bg-yellow-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md border border-yellow-500">
+                    <i class="fas fa-crown mr-3"></i>
+                    <?php if ($_SESSION['subscription_status'] === 'trial'): ?>
+                        Assinar Agora
+                    <?php else: ?>
+                        Renovar Assinatura
+                    <?php endif; ?>
+                    <?php if ($_SESSION['subscription_status'] === 'trial'): ?>
+                        <span class="ml-auto bg-yellow-500 text-yellow-900 text-xs px-2 py-1 rounded-full font-bold">Teste</span>
+                    <?php else: ?>
+                        <span class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">Expirado</span>
+                    <?php endif; ?>
+                </a>
+                <?php endif; ?>
+            <?php endif; ?>
+            
             <?php if ($is_admin): ?>
             <!-- Separador para seção administrativa -->
             <div class="border-t border-gray-700 my-2"></div>
