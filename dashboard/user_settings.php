@@ -548,7 +548,7 @@ $whatsapp_connected = $_SESSION['whatsapp_connected'] ?? false;
                                 </form>
                             </div>
                         </div>
-                    </div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100">Configurações de Notificação</h1>
                 </div>
             </main>
         </div>

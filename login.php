@@ -47,6 +47,12 @@ if ($_POST) {
             $_SESSION['notify_on_due_date'] = $user->notify_on_due_date;
             $_SESSION['notify_1_day_after_due'] = $user->notify_1_day_after_due;
             
+            // Atualizar data do último login
+            $update_login_query = "UPDATE users SET last_login = NOW() WHERE id = :id";
+            $update_stmt = $db->prepare($update_login_query);
+            $update_stmt->bindParam(':id', $user->id);
+            $update_stmt->execute();
+            
             redirect("dashboard/index.php");
         } else {
             $error = "Email ou senha incorretos!";

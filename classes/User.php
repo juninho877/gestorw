@@ -209,7 +209,7 @@ class User {
 
     public function update() {
         $query = "UPDATE " . $this->table_name . " 
-                  SET name=:name, email=:email, phone=:phone, plan_id=:plan_id, role=:role
+                  SET name=:name, email=:email, phone=:phone, plan_id=:plan_id, role=:role 
                   WHERE id=:id";
         
         $stmt = $this->conn->prepare($query);
@@ -221,6 +221,77 @@ class User {
         $stmt->bindParam(":id", $this->id);
         
         return $stmt->execute();
+    }
+
+    /**
+     * Atualizar informações do perfil do usuário
+     */
+    public function updateProfileInfo($user_id, $name, $email, $phone) {
+        // Verificar se o email já está em uso por outro usuário
+        if (!empty($email)) {
+            $check_query = "SELECT id FROM " . $this->table_name . " WHERE email = :email AND id != :id";
+            $check_stmt = $this->conn->prepare($check_query);
+            $check_stmt->bindParam(':email', $email);
+            $check_stmt->bindParam(':id', $user_id);
+            $check_stmt->execute();
+            
+            if ($check_stmt->rowCount() > 0) {
+                return ['success' => false, 'message' => 'Este email já está sendo usado por outro usuário.'];
+            }
+        }
+        
+        $query = "UPDATE " . $this->table_name . " 
+                  SET name = :name, email = :email, phone = :phone 
+                  WHERE id = :id";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':name', $name);
+        $stmt->bindParam(':email', $email);
+        $stmt->bindParam(':phone', $phone);
+        $stmt->bindParam(':id', $user_id);
+        
+        if ($stmt->execute()) {
+            return ['success' => true];
+        } else {
+            return ['success' => false, 'message' => 'Erro ao atualizar perfil.'];
+        }
+    }
+    
+    /**
+     * Atualizar senha do usuário
+     */
+    public function updateUserPassword($user_id, $current_password, $new_password) {
+        // Verificar senha atual
+        $query = "SELECT password FROM " . $this->table_name . " WHERE id = :id LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $user_id);
+        $stmt->execute();
+        
+        if ($stmt->rowCount() > 0) {
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stored_password = $row['password'];
+            
+            // Verificar se a senha atual está correta
+            if (!password_verify($current_password, $stored_password)) {
+                return ['success' => false, 'message' => 'Senha atual incorreta.'];
+            }
+            
+            // Atualizar para a nova senha
+            $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+            
+            $update_query = "UPDATE " . $this->table_name . " SET password = :password WHERE id = :id";
+            $update_stmt = $this->conn->prepare($update_query);
+            $update_stmt->bindParam(':password', $hashed_password);
+            $update_stmt->bindParam(':id', $user_id);
+            
+            if ($update_stmt->execute()) {
+                return ['success' => true];
+            } else {
+                return ['success' => false, 'message' => 'Erro ao atualizar senha.'];
+            }
+        }
+        
+        return ['success' => false, 'message' => 'Usuário não encontrado.'];
     }
 
     public function updateSubscriptionDetails($user_id, $subscription_data) {
