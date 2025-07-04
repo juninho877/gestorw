@@ -1,6 +1,13 @@
 <?php
 require_once 'config/config.php';
 require_once 'config/database.php';
+require_once 'classes/AppSettings.php';
+
+// Obter número de dias de teste das configurações
+$database = new Database();
+$db = $database->getConnection();
+$appSettings = new AppSettings($db);
+$trial_days = $appSettings->getTrialDays();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -63,7 +70,7 @@ require_once 'config/database.php';
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
                     <a href="register.php" class="bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 dark:hover:bg-slate-700 transition">
-                        Teste Grátis por 3 Dias
+                        Teste Grátis por <?php echo $trial_days; ?> Dias
                     </a>
                     <a href="#features" class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 dark:hover:bg-slate-800 dark:hover:text-blue-400 transition">
                         Ver Funcionalidades
@@ -282,7 +289,7 @@ require_once 'config/database.php';
                 Junte-se a centenas de empresas que já automatizaram seus processos
             </p>
             <a href="register.php" class="bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition">
-                Começar Teste Grátis
+                Começar <?php echo $trial_days; ?> Dias Grátis
             </a>
         </div>
     </section>

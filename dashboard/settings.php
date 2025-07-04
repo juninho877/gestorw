@@ -70,7 +70,8 @@ if ($_POST) {
                 'whatsapp_delay_seconds' => 'number',
                 'max_retry_attempts' => 'number',
                 'mercado_pago_access_token' => 'string',
-                'mercado_pago_public_key' => 'string',
+                'mercado_pago_public_key' => 'string', 
+                'trial_days' => 'number',
                 // Novas configurações de notificação
                 'notify_5_days_before' => 'boolean',
                 'notify_3_days_before' => 'boolean',
@@ -461,6 +462,28 @@ $timezones = [
                                                 2. Vá em "Suas integrações" → "Credenciais"<br>
                                                 3. Copie o Access Token de produção<br>
                                                 4. Cole aqui para ativar os pagamentos PIX
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="border-t dark:border-slate-600 pt-6">
+                                        <h4 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-4">Configurações de Assinatura</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label for="trial_days" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Dias de Teste Gratuito</label>
+                                                <input type="number" name="trial_days" id="trial_days" 
+                                                       min="1" max="30" 
+                                                       value="<?php echo htmlspecialchars($all_settings['trial_days']['value'] ?? '3'); ?>"
+                                                       class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100">
+                                                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Número de dias para o período de teste gratuito (1-30)</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                            <p class="text-sm text-blue-800 dark:text-blue-300">
+                                                <i class="fas fa-info-circle mr-2"></i>
+                                                <strong>Nota:</strong> Esta configuração afeta apenas novos registros. Usuários existentes manterão seus períodos de teste atuais.
+                                                O valor será exibido automaticamente na página de registro.
                                             </p>
                                         </div>
                                     </div>
