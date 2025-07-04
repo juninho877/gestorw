@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../classes/User.php';
+require_once __DIR__ . '/../classes/AppSettings.php';
 
 // IMPORTANTE: NÃO incluir auth_check.php aqui para evitar loop infinito
 
@@ -31,6 +32,10 @@ if ($stmt->rowCount() === 0) {
 }
 
 $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Obter número de dias de teste das configurações
+$appSettings = new AppSettings($db);
+$trial_days = $appSettings->getTrialDays();
 
 // Atualizar propriedades do usuário
 $user->name = $user_data['name'];
@@ -89,7 +94,7 @@ $subscription_info = $user->getSubscriptionInfo();
                             <div>
                                 <h3 class="text-sm font-medium text-red-800 dark:text-red-300">
                                     <?php if ($user->subscription_status === 'trial'): ?>
-                                        Seu período de teste de 3 dias expirou
+                                        Seu período de teste de <?php echo $trial_days; ?> dias expirou
                                     <?php else: ?>
                                         Sua assinatura não está mais ativa
                                     <?php endif; ?>

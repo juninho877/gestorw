@@ -35,7 +35,7 @@ if ($_POST) {
                 case 'add':
                     $user->name = trim($_POST['name']);
                     $user->email = trim($_POST['email']);
-                    $user->password = $_POST['password'];
+                    $user->password = trim($_POST['password']);
                     $user->phone = trim($_POST['phone']);
                     $user->plan_id = $_POST['plan_id'];
                     $user->role = $_POST['role'];
@@ -61,6 +61,40 @@ if ($_POST) {
                     $check_stmt = $db->prepare($check_query);
                     $check_stmt->bindParam(':email', $user->email);
                     $check_stmt->execute();
+                    
+                    // Obter número de dias de teste das configurações
+                    $appSettings = new AppSettings($db);
+                    $trial_days = $appSettings->getTrialDays();
+                    
+                    // Definir período de teste personalizado se fornecido
+                    if (isset($_POST['custom_trial']) && $_POST['custom_trial'] === 'on' && !empty($_POST['trial_days'])) {
+                        $custom_trial_days = (int)$_POST['trial_days'];
+                        if ($custom_trial_days > 0 && $custom_trial_days <= 90) { // Limite de 90 dias
+                            $trial_days = $custom_trial_days;
+                        }
+                    }
+                    
+                    // Definir datas de início e fim do teste
+                    $trial_starts_at = date('Y-m-d H:i:s');
+                    $trial_ends_at = date('Y-m-d H:i:s', strtotime("+{$trial_days} days"));
+                    
+                    // Definir status e data de expiração do plano
+                    $subscription_status = 'trial';
+                    $plan_expires_at = $trial_ends_at;
+                    
+                    // Se o usuário for admin, não definir período de teste
+                    if ($_POST['role'] === 'admin') {
+                        $trial_starts_at = null;
+                        $trial_ends_at = null;
+                        $subscription_status = 'active';
+                        $plan_expires_at = null;
+                    }
+                    
+                    // Definir valores no objeto user
+                    $user->trial_starts_at = $trial_starts_at;
+                    $user->trial_ends_at = $trial_ends_at;
+                    $user->subscription_status = $subscription_status;
+                    $user->plan_expires_at = $plan_expires_at;
                     
                     if ($check_stmt->rowCount() > 0) {
                         $_SESSION['error'] = "Este email já está em uso.";
@@ -516,6 +550,32 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                         </div>
                     </div>
                     
+                    <!-- Configuração de período de teste personalizado -->
+                    <div class="mt-4 border-t dark:border-slate-600 pt-4">
+                        <div class="flex items-start mb-2">
+                            <div class="flex items-center h-5">
+                                <input type="checkbox" name="custom_trial" id="custom_trial" 
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                       onchange="toggleCustomTrialDays()">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="custom_trial" class="font-medium text-gray-700 dark:text-slate-300">
+                                    Definir período de teste personalizado
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div id="custom_trial_days_container" class="hidden">
+                            <label for="trial_days" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Dias de teste</label>
+                            <input type="number" name="trial_days" id="trial_days" min="1" max="90" 
+                                   value="<?php echo (new AppSettings($db))->getTrialDays(); ?>"
+                                   class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100">
+                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                                Número de dias para o período de teste (1-90). Padrão: <?php echo (new AppSettings($db))->getTrialDays(); ?> dias
+                            </p>
+                        </div>
+                    </div>
+                    
                     <div class="flex justify-end space-x-3 mt-6">
                         <button type="button" onclick="closeModal()" class="bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-slate-300 px-5 py-2.5 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition duration-150">
                             Cancelar
@@ -812,6 +872,18 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                 closePasswordModal();
             }
         });
+        
+        // Função para mostrar/ocultar campo de dias de teste personalizado
+        function toggleCustomTrialDays() {
+            const customTrialCheckbox = document.getElementById('custom_trial');
+            const customTrialDaysContainer = document.getElementById('custom_trial_days_container');
+            
+            if (customTrialCheckbox.checked) {
+                customTrialDaysContainer.classList.remove('hidden');
+            } else {
+                customTrialDaysContainer.classList.add('hidden');
+            }
+        }
 
         // Inicializar campos de data ao carregar a página
         document.addEventListener('DOMContentLoaded', function() {

@@ -3,6 +3,7 @@ require_once __DIR__ . '/auth_check.php'; // Middleware de autenticação
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../classes/Client.php';
 require_once __DIR__ . '/../classes/MessageTemplate.php';
+require_once __DIR__ . '/../classes/AppSettings.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -34,6 +35,10 @@ $is_admin = ($_SESSION['user_role'] === 'admin');
 
 // Obter informações da assinatura
 $subscription_info = $current_user->getSubscriptionInfo();
+
+// Obter número de dias de teste das configurações
+$appSettings = new AppSettings($db);
+$trial_days = $appSettings->getTrialDays();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -72,7 +77,7 @@ $subscription_info = $current_user->getSubscriptionInfo();
                                         🎉 Período de Teste Gratuito Ativo!
                                     </h4>
                                     <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                                        Você tem <strong><?php echo $subscription_info['trial_days_remaining']; ?> dias restantes</strong> para explorar todas as funcionalidades.
+                                        Você tem <strong><?php echo $subscription_info['trial_days_remaining']; ?> dias restantes</strong> do seu período de teste de <?php echo $trial_days; ?> dias para explorar todas as funcionalidades.
                                     </p>
                                     <div class="mt-3 flex flex-col sm:flex-row gap-2">
                                         <a href="../payment.php?plan_id=<?php echo htmlspecialchars($_SESSION['plan_id']); ?>" 
