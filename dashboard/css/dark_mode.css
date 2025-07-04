@@ -1,0 +1,310 @@
+/* Dark Mode Styles for ClientManager Pro */
+
+/* Base dark mode styles */
+html.dark {
+    color-scheme: dark;
+}
+
+html.dark body {
+    background-color: #0f172a;
+    color: #f1f5f9;
+}
+
+/* Sidebar dark mode */
+html.dark .sidebar {
+    background-color: #1e293b;
+    border-color: #334155;
+}
+
+html.dark .sidebar-link {
+    color: #cbd5e1;
+}
+
+html.dark .sidebar-link:hover {
+    background-color: #334155;
+    color: #f1f5f9;
+}
+
+html.dark .sidebar-link.active {
+    background-color: #3b82f6;
+    color: #ffffff;
+}
+
+/* Cards and containers */
+html.dark .bg-white {
+    background-color: #1e293b !important;
+}
+
+html.dark .bg-gray-50 {
+    background-color: #0f172a !important;
+}
+
+html.dark .bg-gray-100 {
+    background-color: #1e293b !important;
+}
+
+html.dark .bg-gray-200 {
+    background-color: #334155 !important;
+}
+
+html.dark .bg-gray-800 {
+    background-color: #0f172a !important;
+}
+
+/* Text colors */
+html.dark .text-gray-900 {
+    color: #f1f5f9 !important;
+}
+
+html.dark .text-gray-800 {
+    color: #e2e8f0 !important;
+}
+
+html.dark .text-gray-700 {
+    color: #cbd5e1 !important;
+}
+
+html.dark .text-gray-600 {
+    color: #94a3b8 !important;
+}
+
+html.dark .text-gray-500 {
+    color: #64748b !important;
+}
+
+html.dark .text-gray-400 {
+    color: #475569 !important;
+}
+
+html.dark .text-gray-300 {
+    color: #64748b !important;
+}
+
+/* Borders */
+html.dark .border-gray-200 {
+    border-color: #334155 !important;
+}
+
+html.dark .border-gray-300 {
+    border-color: #475569 !important;
+}
+
+html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #334155 !important;
+}
+
+/* Forms */
+html.dark input,
+html.dark textarea,
+html.dark select {
+    background-color: #334155 !important;
+    border-color: #475569 !important;
+    color: #f1f5f9 !important;
+}
+
+html.dark input:focus,
+html.dark textarea:focus,
+html.dark select:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 1px #3b82f6 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+    color: #64748b !important;
+}
+
+/* Tables */
+html.dark table {
+    background-color: #1e293b !important;
+}
+
+html.dark thead {
+    background-color: #334155 !important;
+}
+
+html.dark tbody tr:hover {
+    background-color: #334155 !important;
+}
+
+/* Buttons */
+html.dark .btn-secondary {
+    background-color: #334155 !important;
+    color: #f1f5f9 !important;
+    border-color: #475569 !important;
+}
+
+html.dark .btn-secondary:hover {
+    background-color: #475569 !important;
+}
+
+/* Alerts and notifications */
+html.dark .bg-green-100 {
+    background-color: #064e3b !important;
+}
+
+html.dark .bg-red-100 {
+    background-color: #7f1d1d !important;
+}
+
+html.dark .bg-yellow-100 {
+    background-color: #78350f !important;
+}
+
+html.dark .bg-blue-100 {
+    background-color: #1e3a8a !important;
+}
+
+html.dark .text-green-800 {
+    color: #bbf7d0 !important;
+}
+
+html.dark .text-red-800 {
+    color: #fecaca !important;
+}
+
+html.dark .text-yellow-800 {
+    color: #fef3c7 !important;
+}
+
+html.dark .text-blue-800 {
+    color: #dbeafe !important;
+}
+
+/* Shadows */
+html.dark .shadow-md {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+}
+
+html.dark .shadow-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2) !important;
+}
+
+html.dark .shadow-xl {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Modal backgrounds */
+html.dark .modal-overlay {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Specific component overrides */
+html.dark .qr-code-container {
+    background-color: #f1f5f9 !important;
+}
+
+html.dark .status-badge {
+    border-color: #475569 !important;
+}
+
+/* Scrollbars */
+html.dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* Dark mode toggle button */
+.dark-mode-toggle {
+    position: relative; 
+    width: 40px;
+    height: 20px;
+    background-color: #374151;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.dark-mode-toggle.active {
+    background-color: #3b82f6;
+}
+
+.dark-mode-toggle::before {
+    content: '';
+    position: absolute;
+    top: 1.5px;
+    left: 1.5px;
+    width: 17px;
+    height: 17px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+}
+
+.dark-mode-toggle.active::before {
+    transform: translateX(20px);
+}
+
+/* Icons in dark mode */
+html.dark .text-blue-400,
+html.dark .text-green-400,
+html.dark .text-yellow-400,
+html.dark .text-red-400,
+html.dark .text-purple-400 {
+    filter: brightness(1.2);
+}
+
+/* Specific fixes for dashboard components */
+html.dark .dashboard-card {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+html.dark .stats-card {
+    background-color: #1e293b !important;
+}
+
+html.dark .sidebar-user-info {
+    border-color: #334155 !important;
+}
+
+/* Mobile-specific dark mode toggle adjustments */
+@media (max-width: 640px) {
+    .dark-mode-toggle {
+        width: 28px;
+        height: 14px;
+        border-radius: 7px;
+    }
+    
+    .dark-mode-toggle::before {
+        width: 12px;
+        height: 12px;
+        top: 1px;
+        left: 1px;
+    }
+    
+    .dark-mode-toggle.active::before {
+        transform: translateX(14px);
+    }
+}
+
+/* Landing page dark mode (if needed) */
+html.dark .hero-section {
+    background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%) !important;
+}
+
+html.dark .feature-card {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+/* Print styles for dark mode */
+@media print {
+    html.dark * {
+        background-color: white !important;
+        color: black !important;
+    }
+}
