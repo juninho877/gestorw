@@ -1,9 +1,17 @@
 <?php
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/classes/User.php';
+require_once __DIR__ . '/classes/AppSettings.php';
 
 $message = '';
 $plan_id = isset($_GET['plan']) ? (int)$_GET['plan'] : 1;
+$error = '';
+
+// Obter número de dias de teste das configurações
+$database = new Database();
+$db = $database->getConnection();
+$appSettings = new AppSettings($db);
+$trial_days = $appSettings->getTrialDays();
 
 if ($_POST) {
     $database = new Database();
@@ -106,7 +114,7 @@ $plan = $stmt->fetch(PDO::FETCH_ASSOC);
                 <p class="mt-2 text-center text-sm text-gray-600 dark:text-slate-400">
                     Plano selecionado: <strong><?php echo htmlspecialchars($plan['name']); ?></strong> - R$ <?php echo number_format($plan['price'], 2, ',', '.'); ?>/mês
                     <br>
-                    <span class="text-green-600 font-medium">3 dias de teste gratuito incluídos!</span>
+                    <span class="text-green-600 font-medium"><?php echo $trial_days; ?> dias de teste gratuito incluídos!</span>
                 </p>
             </div>
             
@@ -166,7 +174,7 @@ $plan = $stmt->fetch(PDO::FETCH_ASSOC);
                         <button type="submit" 
                                 class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                             <i class="fas fa-user-plus mr-2"></i>
-                            Criar Conta e Começar Teste Gratuito
+                            Criar Conta e Começar <?php echo $trial_days; ?> Dias Grátis
                         </button>
                     </div>
                     

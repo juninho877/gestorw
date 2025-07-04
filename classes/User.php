@@ -64,8 +64,14 @@ class User {
 
         // Definir período de teste de 3 dias para novos usuários (exceto admins)
         if ($this->role !== 'admin') {
+            // Obter número de dias de teste das configurações
+            $database = new Database();
+            $db = $database->getConnection();
+            $appSettings = new AppSettings($db);
+            $trial_days = $appSettings->getTrialDays();
+            
             $this->trial_starts_at = date('Y-m-d H:i:s');
-            $this->trial_ends_at = date('Y-m-d H:i:s', strtotime('+3 days'));
+            $this->trial_ends_at = date('Y-m-d H:i:s', strtotime("+{$trial_days} days"));
             $this->subscription_status = 'trial';
             $this->plan_expires_at = $this->trial_ends_at; // O plano expira junto com o teste
         } else {

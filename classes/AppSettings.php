@@ -209,6 +209,13 @@ class AppSettings {
     public function getTimezone() {
         return $this->get('timezone', 'America/Sao_Paulo');
     }
+    
+    /**
+     * Obter número de dias para o período de teste gratuito
+     */
+    public function getTrialDays() {
+        return (int)$this->get('trial_days', 3);
+    }
 
     public function getWhatsAppDelay() {
         return $this->get('whatsapp_delay_seconds', 2);
