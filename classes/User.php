@@ -26,6 +26,11 @@ class User {
     public $trial_ends_at;
     public $subscription_status;
     public $plan_expires_at;
+    // Propriedades para configurações de pagamento
+    public $mp_access_token;
+    public $mp_public_key;
+    public $payment_method_preference;
+    public $manual_pix_key;
 
     public function __construct($db) {
         $this->conn = $db;
@@ -40,6 +45,10 @@ class User {
                       notify_1_day_before=:notify_1_day_before,
                       notify_on_due_date=:notify_on_due_date,
                       notify_1_day_after_due=:notify_1_day_after_due,
+                      mp_access_token=:mp_access_token,
+                      mp_public_key=:mp_public_key,
+                      payment_method_preference=:payment_method_preference,
+                      manual_pix_key=:manual_pix_key,
                       trial_starts_at=:trial_starts_at,
                       trial_ends_at=:trial_ends_at,
                       subscription_status=:subscription_status,
@@ -61,6 +70,9 @@ class User {
         $this->notify_1_day_before = $this->notify_1_day_before ?? false;
         $this->notify_on_due_date = $this->notify_on_due_date ?? true;
         $this->notify_1_day_after_due = $this->notify_1_day_after_due ?? false;
+        
+        // Definir valores padrão para configurações de pagamento
+        $this->payment_method_preference = $this->payment_method_preference ?? 'none';
 
         // Definir período de teste de 3 dias para novos usuários (exceto admins)
         if ($this->role !== 'admin') {
@@ -94,6 +106,10 @@ class User {
         $stmt->bindParam(":notify_1_day_before", $this->notify_1_day_before, PDO::PARAM_BOOL);
         $stmt->bindParam(":notify_on_due_date", $this->notify_on_due_date, PDO::PARAM_BOOL);
         $stmt->bindParam(":notify_1_day_after_due", $this->notify_1_day_after_due, PDO::PARAM_BOOL);
+        $stmt->bindParam(":mp_access_token", $this->mp_access_token);
+        $stmt->bindParam(":mp_public_key", $this->mp_public_key);
+        $stmt->bindParam(":payment_method_preference", $this->payment_method_preference);
+        $stmt->bindParam(":manual_pix_key", $this->manual_pix_key);
         $stmt->bindParam(":trial_starts_at", $this->trial_starts_at);
         $stmt->bindParam(":trial_ends_at", $this->trial_ends_at);
         $stmt->bindParam(":subscription_status", $this->subscription_status);
@@ -115,7 +131,8 @@ class User {
         $query = "SELECT id, name, email, password, plan_id, role, whatsapp_instance, whatsapp_connected,
                          notify_5_days_before, notify_3_days_before, notify_2_days_before, notify_1_day_before,
                          notify_on_due_date, notify_1_day_after_due, trial_starts_at, trial_ends_at,
-                         subscription_status, plan_expires_at
+                         subscription_status, plan_expires_at, mp_access_token, mp_public_key, 
+                         payment_method_preference, manual_pix_key
                   FROM " . $this->table_name . " WHERE email = :email LIMIT 1";
         
         $stmt = $this->conn->prepare($query);
@@ -155,6 +172,11 @@ class User {
                 $this->trial_ends_at = $row['trial_ends_at'];
                 $this->subscription_status = $row['subscription_status'];
                 $this->plan_expires_at = $row['plan_expires_at'];
+                // Carregar configurações de pagamento
+                $this->mp_access_token = $row['mp_access_token'];
+                $this->mp_public_key = $row['mp_public_key'];
+                $this->payment_method_preference = $row['payment_method_preference'];
+                $this->manual_pix_key = $row['manual_pix_key'];
 
                 error_log("Login successful for user ID: " . $this->id . ", Role: " . $this->role);
                 return true;
@@ -208,6 +230,10 @@ class User {
             $this->trial_ends_at = $row['trial_ends_at'];
             $this->subscription_status = $row['subscription_status'];
             $this->plan_expires_at = $row['plan_expires_at'];
+            $this->mp_access_token = $row['mp_access_token'];
+            $this->mp_public_key = $row['mp_public_key'];
+            $this->payment_method_preference = $row['payment_method_preference'];
+            $this->manual_pix_key = $row['manual_pix_key'];
             return true;
         }
         return false;
@@ -298,6 +324,53 @@ class User {
         }
         
         return ['success' => false, 'message' => 'Usuário não encontrado.'];
+    }
+
+    /**
+     * Atualizar configurações de pagamento do usuário
+     */
+    public function updatePaymentSettings($user_id, $settings) {
+        $query = "UPDATE " . $this->table_name . " 
+                  SET mp_access_token = :mp_access_token,
+                      mp_public_key = :mp_public_key,
+                      payment_method_preference = :payment_method_preference,
+                      manual_pix_key = :manual_pix_key
+                  WHERE id = :id";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':mp_access_token', $settings['mp_access_token']);
+        $stmt->bindParam(':mp_public_key', $settings['mp_public_key']);
+        $stmt->bindParam(':payment_method_preference', $settings['payment_method_preference']);
+        $stmt->bindParam(':manual_pix_key', $settings['manual_pix_key']);
+        $stmt->bindParam(':id', $user_id);
+        
+        if ($stmt->execute()) {
+            return ['success' => true];
+        } else {
+            return ['success' => false, 'message' => 'Erro ao atualizar configurações de pagamento.'];
+        }
+    }
+
+    /**
+     * Obter configurações de pagamento do usuário
+     */
+    public function getPaymentSettings($user_id) {
+        $query = "SELECT mp_access_token, mp_public_key, payment_method_preference, manual_pix_key
+                  FROM " . $this->table_name . " WHERE id = :id LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $user_id);
+        $stmt->execute();
+        
+        if ($stmt->rowCount() > 0) {
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        
+        return [
+            'mp_access_token' => null,
+            'mp_public_key' => null,
+            'payment_method_preference' => 'none',
+            'manual_pix_key' => null
+        ];
     }
 
     public function updateSubscriptionDetails($user_id, $subscription_data) {

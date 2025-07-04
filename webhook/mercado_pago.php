@@ -26,8 +26,12 @@ try {
     require_once __DIR__ . '/../config/config.php';
     require_once __DIR__ . '/../config/database.php';
     require_once __DIR__ . '/../classes/Payment.php';
+    require_once __DIR__ . '/../classes/ClientPayment.php';
     require_once __DIR__ . '/../classes/MercadoPagoAPI.php';
     require_once __DIR__ . '/../classes/User.php';
+    require_once __DIR__ . '/../classes/WhatsAppAPI.php';
+    require_once __DIR__ . '/../classes/MessageTemplate.php';
+    require_once __DIR__ . '/../classes/Client.php';
     
     // Verificar se é uma requisição POST
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -83,6 +87,32 @@ try {
     $database = new Database();
     $db = $database->getConnection();
     
+    // Verificar se é um pagamento de assinatura ou de cliente
+    $is_client_payment = false;
+    $external_reference = $payload['data']['external_reference'] ?? '';
+    
+    if (strpos($external_reference, 'client_') === 0) {
+        $is_client_payment = true;
+    }
+    
+    if ($is_client_payment) {
+        // Processar pagamento de cliente
+        processClientPayment($payment_id, $db);
+    } else {
+        // Processar pagamento de assinatura
+        processSubscriptionPayment($payment_id, $db);
+    }
+    
+} catch (Exception $e) {
+    error_log("Webhook error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['error' => 'Internal server error']);
+}
+
+/**
+ * Processar pagamento de assinatura
+ */
+function processSubscriptionPayment($payment_id, $db) {
     if (!$db) {
         throw new Exception("Database connection failed");
     }
@@ -156,11 +186,152 @@ try {
         http_response_code(200);
         echo json_encode(['status' => 'pending']);
     }
+}
+
+/**
+ * Processar pagamento de cliente
+ */
+function processClientPayment($payment_id, $db) {
+    // Verificar se o pagamento existe no nosso banco
+    $clientPayment = new ClientPayment($db);
+    if (!$clientPayment->readByMercadoPagoId($payment_id)) {
+        error_log("Client payment not found in database: " . $payment_id);
+        http_response_code(404);
+        echo json_encode(['error' => 'Payment not found']);
+        return;
+    }
     
-} catch (Exception $e) {
-    error_log("Webhook error: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['error' => 'Internal server error']);
+    // Se o pagamento já foi processado, ignorar
+    if ($clientPayment->status === 'approved') {
+        error_log("Client payment already approved: " . $payment_id);
+        http_response_code(200);
+        echo json_encode(['status' => 'already_processed']);
+        return;
+    }
+    
+    // Consultar status atual no Mercado Pago
+    $mercado_pago = new MercadoPagoAPI();
+    $mp_status = $mercado_pago->getPaymentStatus($payment_id);
+    
+    if (!$mp_status['success']) {
+        error_log("Failed to get client payment status from MP: " . $mp_status['error']);
+        http_response_code(500);
+        echo json_encode(['error' => 'Failed to verify payment']);
+        return;
+    }
+    
+    $new_status = $mercado_pago->mapPaymentStatus($mp_status['status']);
+    error_log("Client payment status: " . $mp_status['status'] . " -> " . $new_status);
+    
+    // Atualizar status no banco
+    if ($new_status === 'approved') {
+        // Pagamento aprovado
+        $paid_at = $mp_status['date_approved'] ?: date('Y-m-d H:i:s');
+        $clientPayment->updateStatus('approved', $paid_at);
+        
+        // Enviar mensagem de confirmação para o cliente
+        sendClientPaymentConfirmation($clientPayment, $db);
+        
+        http_response_code(200);
+        echo json_encode(['status' => 'processed', 'action' => 'client_payment_approved']);
+    } elseif ($new_status !== 'pending') {
+        // Pagamento falhou ou foi cancelado
+        $clientPayment->updateStatus($new_status);
+        error_log("Client payment failed with status: " . $new_status);
+        
+        http_response_code(200);
+        echo json_encode(['status' => 'processed', 'action' => 'client_payment_failed']);
+    } else {
+        // Ainda pendente
+        error_log("Client payment still pending");
+        http_response_code(200);
+        echo json_encode(['status' => 'pending']);
+    }
+}
+
+/**
+ * Enviar mensagem de confirmação de pagamento para o cliente
+ */
+function sendClientPaymentConfirmation($clientPayment, $db) {
+    try {
+        // Buscar dados do cliente
+        $client = new Client($db);
+        $client->id = $clientPayment->client_id;
+        $client->user_id = $clientPayment->user_id;
+        
+        if (!$client->readOne()) {
+            error_log("Client not found for payment confirmation: " . $clientPayment->client_id);
+            return false;
+        }
+        
+        // Buscar dados do usuário (dono do cliente)
+        $user = new User($db);
+        $user->id = $clientPayment->user_id;
+        
+        if (!$user->readOne()) {
+            error_log("User not found for payment confirmation: " . $clientPayment->user_id);
+            return false;
+        }
+        
+        // Verificar se o WhatsApp está conectado
+        if (empty($user->whatsapp_instance) || !$user->whatsapp_connected) {
+            error_log("WhatsApp not connected for user: " . $clientPayment->user_id);
+            return false;
+        }
+        
+        // Buscar template de confirmação de pagamento
+        $template = new MessageTemplate($db);
+        $template->user_id = $clientPayment->user_id;
+        
+        $message_text = '';
+        $template_id = null;
+        
+        if ($template->readByType($clientPayment->user_id, 'payment_confirmed')) {
+            $message_text = $template->message;
+            $template_id = $template->id;
+        } else {
+            // Template padrão se não encontrar
+            $message_text = "Olá {nome}! Recebemos seu pagamento de {valor} com sucesso. Obrigado! 👍";
+        }
+        
+        // Personalizar mensagem
+        $message_text = str_replace('{nome}', $client->name, $message_text);
+        $message_text = str_replace('{valor}', 'R$ ' . number_format($clientPayment->amount, 2, ',', '.'), $message_text);
+        $message_text = str_replace('{data_pagamento}', date('d/m/Y', strtotime($clientPayment->paid_at)), $message_text);
+        
+        // Enviar mensagem
+        $whatsapp = new WhatsAppAPI();
+        $result = $whatsapp->sendMessage($user->whatsapp_instance, $client->phone, $message_text);
+        
+        // Registrar no histórico
+        if ($result['status_code'] == 200 || $result['status_code'] == 201) {
+            $messageHistory = new MessageHistory($db);
+            $messageHistory->user_id = $clientPayment->user_id;
+            $messageHistory->client_id = $clientPayment->client_id;
+            $messageHistory->template_id = $template_id;
+            $messageHistory->message = $message_text;
+            $messageHistory->phone = $client->phone;
+            $messageHistory->status = 'sent';
+            $messageHistory->payment_id = $clientPayment->id;
+            
+            // Extrair e limpar ID da mensagem do WhatsApp se disponível
+            if (isset($result['data']['key']['id'])) {
+                $raw_id = $result['data']['key']['id'];
+                $messageHistory->whatsapp_message_id = cleanWhatsAppMessageId($raw_id);
+            }
+            
+            $messageHistory->create();
+            
+            error_log("Payment confirmation message sent to client {$client->name}");
+            return true;
+        } else {
+            error_log("Failed to send payment confirmation message to client {$client->name}");
+            return false;
+        }
+    } catch (Exception $e) {
+        error_log("Error sending payment confirmation: " . $e->getMessage());
+        return false;
+    }
 }
 
 /**

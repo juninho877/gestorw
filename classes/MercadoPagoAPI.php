@@ -4,9 +4,12 @@ require_once __DIR__ . '/../config/config.php';
 class MercadoPagoAPI {
     private $access_token;
     private $api_url;
+    private $public_key;
     
-    public function __construct() {
-        $this->access_token = MERCADO_PAGO_ACCESS_TOKEN;
+    public function __construct($access_token = null, $public_key = null) {
+        // Usar token fornecido ou o global das configurações
+        $this->access_token = $access_token ?: MERCADO_PAGO_ACCESS_TOKEN;
+        $this->public_key = $public_key ?: MERCADO_PAGO_PUBLIC_KEY;
         $this->api_url = 'https://api.mercadopago.com';
         
         if (empty($this->access_token)) {
@@ -17,7 +20,7 @@ class MercadoPagoAPI {
     /**
      * Criar um pagamento PIX
      */
-    public function createPixPayment($amount, $description, $external_reference = null, $payer_email = null) {
+    public function createPixPayment($amount, $description, $external_reference = null, $payer_email = null, $notification_url = null) {
         $url = $this->api_url . '/v1/payments';
         
         // Email do pagador - usar o fornecido ou um genérico
@@ -33,9 +36,11 @@ class MercadoPagoAPI {
                     'type' => 'CPF',
                     'number' => '11111111111' // CPF genérico para PIX
                 ]
-            ],
-            'notification_url' => SITE_URL . '/webhook/mercado_pago.php'
+            ]
         ];
+        
+        // Adicionar URL de notificação se fornecida, ou usar a padrão
+        $payment_data['notification_url'] = $notification_url ?: (SITE_URL . '/webhook/mercado_pago.php');
         
         if ($external_reference) {
             $payment_data['external_reference'] = $external_reference;

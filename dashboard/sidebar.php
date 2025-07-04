@@ -64,7 +64,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
             <a href="user_settings.php" class="sidebar-link <?php echo $current_page == 'user_settings.php' ? 'bg-blue-600 text-white active' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                 <i class="fas fa-user-cog mr-3"></i>
-                Configurações de Notificação
+                Notificações
+            </a>
+            
+            <a href="payment_settings.php" class="sidebar-link <?php echo $current_page == 'payment_settings.php' ? 'bg-blue-600 text-white active' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                <i class="fas fa-money-bill-wave mr-3"></i>
+                Configurações de Pagamento
             </a>
             
             <a href="profile.php" class="sidebar-link <?php echo $current_page == 'profile.php' ? 'bg-blue-600 text-white active' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> group flex items-center px-2 py-2 text-sm font-medium rounded-md">

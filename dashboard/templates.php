@@ -249,6 +249,15 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                         </button>
                                     </div>
                                     
+                                    <div class="border border-gray-200 dark:border-slate-600 rounded-lg p-4 hover:shadow-md transition-shadow duration-300 bg-white dark:bg-slate-700">
+                                        <h4 class="font-semibold text-gray-900 dark:text-slate-100 mb-2">Confirmação de Pagamento</h4>
+                                        <p class="text-sm text-gray-600 dark:text-slate-400 mb-3">Olá {nome}! Recebemos seu pagamento de {valor} com sucesso. Obrigado! 👍</p>
+                                        <button onclick="useTemplate('Confirmação de Pagamento', 'payment_confirmed', 'Olá {nome}! Recebemos seu pagamento de {valor} com sucesso. Obrigado! 👍')" 
+                                                class="text-purple-600 text-sm hover:underline">
+                                            Usar este template
+                                        </button>
+                                    </div>
+                                    
                                     <!-- Templates clássicos -->
                                     <div class="border border-gray-200 dark:border-slate-600 rounded-lg p-4 hover:shadow-md transition-shadow duration-300 bg-white dark:bg-slate-700">
                                         <h4 class="font-semibold text-gray-900 dark:text-slate-100 mb-2">Cobrança Amigável</h4>
@@ -402,6 +411,7 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                     <option value="lembrete">Lembrete</option>
                                     <option value="boas_vindas">Boas Vindas</option>
                                     <option value="custom">Personalizado</option>
+                                    <option value="payment_confirmed">Confirmação de Pagamento</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -412,7 +422,12 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                       class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                                       placeholder="Digite a mensagem do template..."></textarea>
                             <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
-                                Variáveis disponíveis: {nome}, {valor}, {vencimento}
+                                Variáveis disponíveis: {nome}, {valor}, {vencimento}, {data_pagamento}
+                                <?php if ($payment_settings['payment_method_preference'] === 'auto_mp'): ?>
+                                , {pix_qr_code}, {pix_code}
+                                <?php elseif ($payment_settings['payment_method_preference'] === 'manual_pix'): ?>
+                                , {manual_pix_key}
+                                <?php endif; ?>
                             </p>
                         </div>
                         

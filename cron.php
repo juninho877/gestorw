@@ -20,6 +20,8 @@ require_once __DIR__ . '/classes/Client.php';
 require_once __DIR__ . '/classes/MessageTemplate.php';
 require_once __DIR__ . '/classes/MessageHistory.php';
 require_once __DIR__ . '/classes/WhatsAppAPI.php';
+require_once __DIR__ . '/classes/MercadoPagoAPI.php';
+require_once __DIR__ . '/classes/ClientPayment.php';
 require_once __DIR__ . '/classes/AppSettings.php';
 
 // Log de início
@@ -102,8 +104,9 @@ try {
                 foreach ($clients_5_days as $client_data) {
                     $message_sent = sendAutomaticMessage(
                         $whatsapp, $template, $messageHistory, 
-                        $user_id, $client_data, $instance_name, 
-                        'due_5_days_before', 'Aviso 5 dias antes'
+                        $user_id, $client_data, $instance_name,
+                        'due_5_days_before', 'Aviso 5 dias antes',
+                        $user_data // Passar dados do usuário para acesso às configurações de pagamento
                     );
                     
                     if ($message_sent) {
@@ -125,8 +128,9 @@ try {
                 foreach ($clients_3_days as $client_data) {
                     $message_sent = sendAutomaticMessage(
                         $whatsapp, $template, $messageHistory, 
-                        $user_id, $client_data, $instance_name, 
-                        'due_3_days_before', 'Aviso 3 dias antes'
+                        $user_id, $client_data, $instance_name,
+                        'due_3_days_before', 'Aviso 3 dias antes',
+                        $user_data
                     );
                     
                     if ($message_sent) {
@@ -147,8 +151,9 @@ try {
                 foreach ($clients_2_days as $client_data) {
                     $message_sent = sendAutomaticMessage(
                         $whatsapp, $template, $messageHistory, 
-                        $user_id, $client_data, $instance_name, 
-                        'due_2_days_before', 'Aviso 2 dias antes'
+                        $user_id, $client_data, $instance_name,
+                        'due_2_days_before', 'Aviso 2 dias antes',
+                        $user_data
                     );
                     
                     if ($message_sent) {
@@ -169,8 +174,9 @@ try {
                 foreach ($clients_1_day as $client_data) {
                     $message_sent = sendAutomaticMessage(
                         $whatsapp, $template, $messageHistory, 
-                        $user_id, $client_data, $instance_name, 
-                        'due_1_day_before', 'Aviso 1 dia antes'
+                        $user_id, $client_data, $instance_name,
+                        'due_1_day_before', 'Aviso 1 dia antes',
+                        $user_data
                     );
                     
                     if ($message_sent) {
@@ -191,8 +197,9 @@ try {
                 foreach ($clients_today as $client_data) {
                     $message_sent = sendAutomaticMessage(
                         $whatsapp, $template, $messageHistory, 
-                        $user_id, $client_data, $instance_name, 
-                        'due_today', 'Vencimento hoje'
+                        $user_id, $client_data, $instance_name,
+                        'due_today', 'Vencimento hoje',
+                        $user_data
                     );
                     
                     if ($message_sent) {
@@ -213,8 +220,9 @@ try {
                 foreach ($clients_1_day_overdue as $client_data) {
                     $message_sent = sendAutomaticMessage(
                         $whatsapp, $template, $messageHistory, 
-                        $user_id, $client_data, $instance_name, 
-                        'overdue_1_day', 'Atraso 1 dia'
+                        $user_id, $client_data, $instance_name,
+                        'overdue_1_day', 'Atraso 1 dia',
+                        $user_data
                     );
                     
                     if ($message_sent) {
@@ -279,7 +287,7 @@ function cleanWhatsAppMessageId($message_id) {
 /**
  * Função para enviar mensagem automática
  */
-function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $client_data, $instance_name, $template_type, $template_name) {
+function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $client_data, $instance_name, $template_type, $template_name, $user_data) {
     try {
         // Buscar template por tipo
         $template->user_id = $user_id;
@@ -320,6 +328,65 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
         $message_text = str_replace('{valor}', 'R$ ' . number_format($client_data['subscription_amount'], 2, ',', '.'), $message_text);
         $message_text = str_replace('{vencimento}', date('d/m/Y', strtotime($client_data['due_date'])), $message_text);
         
+        // Processar opções de pagamento com base na preferência do usuário
+        $payment_id = null;
+        $payment_method_preference = $user_data['payment_method_preference'] ?? 'none';
+        
+        if ($payment_method_preference === 'auto_mp' && !empty($user_data['mp_access_token'])) {
+            // Gerar pagamento via Mercado Pago
+            try {
+                $database = new Database();
+                $db = $database->getConnection();
+                $clientPayment = new ClientPayment($db);
+                
+                $payment_result = $clientPayment->generateClientPayment(
+                    $user_id,
+                    $client_data['id'],
+                    $client_data['subscription_amount'],
+                    "Mensalidade " . date('m/Y') . " - " . $client_data['name'],
+                    $user_data['mp_access_token'],
+                    $user_data['mp_public_key']
+                );
+                
+                if ($payment_result['success']) {
+                    // Adicionar QR Code e código PIX à mensagem
+                    if (!empty($payment_result['qr_code_base64'])) {
+                        // Substituir placeholder {pix_qr_code} com a imagem base64
+                        $qr_code_img = '<img src="data:image/png;base64,' . $payment_result['qr_code_base64'] . '" alt="QR Code PIX">';
+                        $message_text = str_replace('{pix_qr_code}', $qr_code_img, $message_text);
+                    }
+                    
+                    // Adicionar código PIX copia e cola
+                    if (!empty($payment_result['pix_code'])) {
+                        $message_text = str_replace('{pix_code}', $payment_result['pix_code'], $message_text);
+                    }
+                    
+                    // Salvar ID do pagamento para referência
+                    $payment_id = $payment_result['payment_id'];
+                    
+                    error_log("Payment generated for client {$client_data['name']}: ID {$payment_id}");
+                } else {
+                    error_log("Failed to generate payment for client {$client_data['name']}: " . $payment_result['error']);
+                    // Remover placeholders se o pagamento falhar
+                    $message_text = str_replace('{pix_qr_code}', '(Erro ao gerar QR Code)', $message_text);
+                    $message_text = str_replace('{pix_code}', '(Erro ao gerar código PIX)', $message_text);
+                }
+            } catch (Exception $e) {
+                error_log("Error generating payment: " . $e->getMessage());
+                // Remover placeholders se ocorrer erro
+                $message_text = str_replace('{pix_qr_code}', '(Erro ao gerar QR Code)', $message_text);
+                $message_text = str_replace('{pix_code}', '(Erro ao gerar código PIX)', $message_text);
+            }
+        } elseif ($payment_method_preference === 'manual_pix' && !empty($user_data['manual_pix_key'])) {
+            // Incluir chave PIX manual na mensagem
+            $message_text = str_replace('{manual_pix_key}', $user_data['manual_pix_key'], $message_text);
+        }
+        
+        // Remover placeholders não utilizados
+        $message_text = str_replace('{pix_qr_code}', '', $message_text);
+        $message_text = str_replace('{pix_code}', '', $message_text);
+        $message_text = str_replace('{manual_pix_key}', '', $message_text);
+        
         // Enviar mensagem
         $result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $message_text);
         
@@ -339,6 +406,7 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
         $messageHistory->phone = $client_data['phone'];
         $messageHistory->whatsapp_message_id = $whatsapp_message_id;
         $messageHistory->status = ($result['status_code'] == 200 || $result['status_code'] == 201) ? 'sent' : 'failed';
+        $messageHistory->payment_id = $payment_id; // Vincular mensagem ao pagamento, se houver
         
         $messageHistory->create();
         

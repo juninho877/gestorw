@@ -285,6 +285,11 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                                                     title="Marcar pagamento como recebido">
                                                                 <i class="fas fa-dollar-sign"></i>
                                                             </button>
+                                                           <button onclick="generatePayment(<?php echo $client_row['id']; ?>, '<?php echo htmlspecialchars($client_row['name']); ?>', <?php echo $client_row['subscription_amount']; ?>)" 
+                                                                   class="text-blue-600 hover:text-blue-900 mr-3 p-2 rounded-full hover:bg-gray-200 transition duration-150" 
+                                                                   title="Gerar link de pagamento">
+                                                               <i class="fas fa-qrcode"></i>
+                                                           </button>
                                                         <?php endif; ?>
                                                         <button onclick="editClient(<?php echo htmlspecialchars(json_encode($client_row)); ?>)" class="text-blue-600 hover:text-blue-900 mr-3 p-2 rounded-full hover:bg-gray-200 transition duration-150">
                                                             <i class="fas fa-edit"></i>
@@ -468,6 +473,13 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                 `;
                 document.body.appendChild(form);
                 form.submit();
+            }
+        }
+
+        function generatePayment(id, name, amount) {
+            if (confirm('Gerar link de pagamento PIX para "' + name + '"?')) {
+                // Redirecionar para a página de geração de pagamento
+                window.location.href = "generate_payment.php?client_id=" + id;
             }
         }
 

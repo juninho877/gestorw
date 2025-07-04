@@ -17,6 +17,7 @@ require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/classes/User.php';
 require_once __DIR__ . '/classes/Payment.php';
+require_once __DIR__ . '/classes/ClientPayment.php';
 require_once __DIR__ . '/classes/MercadoPagoAPI.php';
 require_once __DIR__ . '/classes/AppSettings.php';
 
@@ -51,6 +52,7 @@ try {
     // Inicializar classes
     $payment = new Payment($db);
     $mercado_pago = new MercadoPagoAPI();
+    $clientPayment = new ClientPayment($db);
     $user = new User($db);
     $appSettings = new AppSettings($db);
     
@@ -60,6 +62,9 @@ try {
         error_log("Marked $expired_count expired payments");
         $stats['payments_expired'] = $expired_count;
     }
+    
+    // Marcar pagamentos de clientes expirados
+    $clientPayment->markExpiredPayments();
     
     // Buscar pagamentos pendentes
     $pending_payments = $payment->getPendingPayments();
@@ -112,6 +117,60 @@ try {
         } catch (Exception $e) {
             error_log("Error processing payment $mp_id: " . $e->getMessage());
             $stats['errors'][] = "Pagamento $mp_id: " . $e->getMessage();
+        }
+        
+        // Delay para não sobrecarregar a API
+        sleep(1);
+    }
+    
+    // Verificar pagamentos de clientes pendentes
+    $pending_client_payments = $clientPayment->getPendingPayments();
+    
+    while ($payment_row = $pending_client_payments->fetch(PDO::FETCH_ASSOC)) {
+        $stats['payments_checked']++;
+        $mp_id = $payment_row['mercado_pago_id'];
+        
+        error_log("Checking client payment: " . $mp_id);
+        
+        try {
+            // Consultar status no Mercado Pago
+            $mp_status = $mercado_pago->getPaymentStatus($mp_id);
+            
+            if ($mp_status['success']) {
+                $new_status = $mercado_pago->mapPaymentStatus($mp_status['status']);
+                
+                error_log("Client payment $mp_id status: " . $mp_status['status'] . " -> $new_status");
+                
+                // Atualizar status no banco
+                $payment_obj = new ClientPayment($db);
+                $payment_obj->id = $payment_row['id'];
+                
+                if ($new_status === 'approved') {
+                    // Pagamento aprovado
+                    $paid_at = $mp_status['date_approved'] ?: date('Y-m-d H:i:s');
+                    $payment_obj->updateStatus('approved', $paid_at);
+                    
+                    // Enviar mensagem de confirmação para o cliente
+                    $payment_obj->readOne(); // Recarregar dados completos
+                    sendClientPaymentConfirmation($payment_obj, $db);
+                    
+                    $stats['payments_approved']++;
+                    error_log("Client payment approved: " . $payment_row['id']);
+                    
+                } elseif ($new_status !== 'pending') {
+                    // Pagamento falhou ou foi cancelado
+                    $payment_obj->updateStatus($new_status);
+                    $stats['payments_failed']++;
+                    error_log("Client payment $mp_id failed with status: $new_status");
+                }
+            } else {
+                error_log("Failed to check client payment $mp_id: " . $mp_status['error']);
+                $stats['errors'][] = "Pagamento de cliente $mp_id: " . $mp_status['error'];
+            }
+            
+        } catch (Exception $e) {
+            error_log("Error processing client payment $mp_id: " . $e->getMessage());
+            $stats['errors'][] = "Pagamento de cliente $mp_id: " . $e->getMessage();
         }
         
         // Delay para não sobrecarregar a API
@@ -224,6 +283,98 @@ function sendPaymentConfirmationEmail($payment_data, $user, $db) {
         
     } catch (Exception $e) {
         error_log("Error sending payment confirmation email: " . $e->getMessage());
+    }
+}
+
+/**
+ * Enviar mensagem de confirmação de pagamento para o cliente
+ */
+function sendClientPaymentConfirmation($clientPayment, $db) {
+    try {
+        // Buscar dados do cliente
+        $client_query = "SELECT * FROM clients WHERE id = :id";
+        $client_stmt = $db->prepare($client_query);
+        $client_stmt->bindParam(':id', $clientPayment->client_id);
+        $client_stmt->execute();
+        
+        if ($client_stmt->rowCount() === 0) {
+            error_log("Client not found for payment confirmation: " . $clientPayment->client_id);
+            return false;
+        }
+        
+        $client = $client_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Buscar dados do usuário (dono do cliente)
+        $user_query = "SELECT * FROM users WHERE id = :id";
+        $user_stmt = $db->prepare($user_query);
+        $user_stmt->bindParam(':id', $clientPayment->user_id);
+        $user_stmt->execute();
+        
+        if ($user_stmt->rowCount() === 0) {
+            error_log("User not found for payment confirmation: " . $clientPayment->user_id);
+            return false;
+        }
+        
+        $user = $user_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Verificar se o WhatsApp está conectado
+        if (empty($user['whatsapp_instance']) || !$user['whatsapp_connected']) {
+            error_log("WhatsApp not connected for user: " . $clientPayment->user_id);
+            return false;
+        }
+        
+        // Buscar template de confirmação de pagamento
+        $template_query = "SELECT * FROM message_templates 
+                          WHERE user_id = :user_id AND type = 'payment_confirmed' AND active = 1 
+                          ORDER BY created_at DESC LIMIT 1";
+        $template_stmt = $db->prepare($template_query);
+        $template_stmt->bindParam(':user_id', $clientPayment->user_id);
+        $template_stmt->execute();
+        
+        $message_text = '';
+        $template_id = null;
+        
+        if ($template_stmt->rowCount() > 0) {
+            $template = $template_stmt->fetch(PDO::FETCH_ASSOC);
+            $message_text = $template['message'];
+            $template_id = $template['id'];
+        } else {
+            // Template padrão se não encontrar
+            $message_text = "Olá {nome}! Recebemos seu pagamento de {valor} com sucesso. Obrigado! 👍";
+        }
+        
+        // Personalizar mensagem
+        $message_text = str_replace('{nome}', $client['name'], $message_text);
+        $message_text = str_replace('{valor}', 'R$ ' . number_format($clientPayment->amount, 2, ',', '.'), $message_text);
+        $message_text = str_replace('{data_pagamento}', date('d/m/Y', strtotime($clientPayment->paid_at)), $message_text);
+        
+        // Enviar mensagem
+        $whatsapp = new WhatsAppAPI();
+        $result = $whatsapp->sendMessage($user['whatsapp_instance'], $client['phone'], $message_text);
+        
+        // Registrar no histórico
+        if ($result['status_code'] == 200 || $result['status_code'] == 201) {
+            $history_query = "INSERT INTO message_history 
+                             (user_id, client_id, template_id, message, phone, status, payment_id) 
+                             VALUES (:user_id, :client_id, :template_id, :message, :phone, 'sent', :payment_id)";
+            $history_stmt = $db->prepare($history_query);
+            $history_stmt->bindParam(':user_id', $clientPayment->user_id);
+            $history_stmt->bindParam(':client_id', $clientPayment->client_id);
+            $history_stmt->bindParam(':template_id', $template_id);
+            $history_stmt->bindParam(':message', $message_text);
+            $history_stmt->bindParam(':phone', $client['phone']);
+            $history_stmt->bindParam(':payment_id', $clientPayment->id);
+            $history_stmt->execute();
+            
+            error_log("Payment confirmation message sent to client {$client['name']}");
+            return true;
+        } else {
+            error_log("Failed to send payment confirmation message to client {$client['name']}");
+            return false;
+        }
+    } catch (Exception $e) {
+        error_log("Error sending payment confirmation: " . $e->getMessage());
+        return false;
     }
 }
 
