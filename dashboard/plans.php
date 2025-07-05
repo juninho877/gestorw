@@ -126,16 +126,26 @@ if ($_POST) {
     }
 }
 
-// Buscar todos os planos
-$plans_stmt = $plan->readAll();
-$plans = $plans_stmt->fetchAll();
+// Buscar todos os planos diretamente do banco para garantir que todos sejam exibidos
+$query = "SELECT * FROM plans ORDER BY display_order ASC, price ASC";
+$stmt = $db->prepare($query);
+$stmt->execute();
+$plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Debug para verificar os planos retornados
+$total_plans = count($plans);
+error_log("Total plans found: " . $total_plans);
 
 // Buscar contagem de usuários por plano
-foreach ($plans as &$plan_row) {
+foreach ($plans as $index => &$plan_row) {
+    error_log("Plan #{$index}: ID={$plan_row['id']}, Name={$plan_row['name']}, Price={$plan_row['price']}, Display Order={$plan_row['display_order']}");
+    
     $plan_obj = new Plan($db);
     $plan_obj->id = $plan_row['id'];
     $plan_row['users_count'] = $plan_obj->getUsersCount();
 }
+
+error_log("Plans fetched: " . print_r($plans, true));
 
 // Se está editando um plano
 $editing_plan = null;
