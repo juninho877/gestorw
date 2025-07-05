@@ -130,13 +130,6 @@ if ($_POST) {
 $plans_stmt = $plan->readAll();
 $plans = $plans_stmt->fetchAll();
 
-// Debug: Log the number of plans and their details
-error_log("Total plans found: " . count($plans));
-foreach ($plans as $index => $plan_data) {
-    error_log("Plan #{$index}: ID={$plan_data['id']}, Name={$plan_data['name']}, Price={$plan_data['price']}, Display Order={$plan_data['display_order']}");
-}
-error_log("Plans fetched: " . print_r($plans, true));
-
 // Buscar contagem de usuários por plano
 foreach ($plans as &$plan_row) {
     $plan_obj = new Plan($db);
@@ -210,76 +203,88 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
 
                         <!-- Lista de Planos -->
                         <div class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <?php foreach ($plans as $plan_row): ?>
-                            <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
-                                <div class="p-6">
-                                    <div class="flex justify-between items-start mb-4">
-                                        <h3 class="text-xl font-semibold text-gray-900 dark:text-slate-100"><?php echo htmlspecialchars($plan_row['name']); ?></h3>
-                                        <div class="flex space-x-2">
-                                            <button onclick="editPlan(<?php echo htmlspecialchars(json_encode($plan_row)); ?>)" 
-                                                    class="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-gray-200 transition duration-150">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <?php if ($plan_row['users_count'] == 0): ?>
-                                                <button onclick="deletePlan(<?php echo $plan_row['id']; ?>, '<?php echo htmlspecialchars($plan_row['name']); ?>')" 
-                                                        class="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-gray-200 transition duration-150">
-                                                    <i class="fas fa-trash"></i>
+                            <?php if (empty($plans)): ?>
+                                <div class="col-span-3 text-center py-12 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                                    <i class="fas fa-tags text-gray-300 text-7xl mb-4"></i>
+                                    <h3 class="text-xl font-semibold text-gray-900 dark:text-slate-100 mb-2">Nenhum plano cadastrado</h3>
+                                    <p class="text-lg text-gray-500 dark:text-slate-400 mb-4">Comece adicionando seu primeiro plano</p>
+                                    <button onclick="openModal()" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition duration-150 shadow-md">
+                                        <i class="fas fa-plus mr-2"></i>
+                                        Adicionar Primeiro Plano
+                                    </button>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($plans as $plan_row): ?>
+                                <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+                                    <div class="p-6">
+                                        <div class="flex justify-between items-start mb-4">
+                                            <h3 class="text-xl font-semibold text-gray-900 dark:text-slate-100"><?php echo htmlspecialchars($plan_row['name']); ?></h3>
+                                            <div class="flex space-x-2">
+                                                <button onclick="editPlan(<?php echo htmlspecialchars(json_encode($plan_row)); ?>)" 
+                                                        class="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-gray-200 transition duration-150">
+                                                    <i class="fas fa-edit"></i>
                                                 </button>
-                                            <?php endif; ?>
+                                                <?php if ($plan_row['users_count'] == 0): ?>
+                                                    <button onclick="deletePlan(<?php echo $plan_row['id']; ?>, '<?php echo htmlspecialchars($plan_row['name']); ?>')" 
+                                                            class="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-gray-200 transition duration-150">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div class="mb-4">
-                                        <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                                            R$ <?php echo number_format($plan_row['price'], 2, ',', '.'); ?>
-                                            <span class="text-sm font-normal text-gray-500 dark:text-slate-400">/mês</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <?php if ($plan_row['description']): ?>
-                                        <p class="text-gray-600 dark:text-slate-400 mb-4"><?php echo htmlspecialchars($plan_row['description']); ?></p>
-                                    <?php endif; ?>
-                                    
-                                    <div class="mb-4">
-                                        <div class="text-sm text-gray-600 dark:text-slate-400">
-                                            <strong>Máximo de clientes:</strong> 
-                                            <?php echo $plan_row['max_clients'] >= 9999 ? 'Ilimitado' : number_format($plan_row['max_clients']); ?>
-                                        </div>
-                                        <div class="text-sm text-gray-600 dark:text-slate-400 mt-1">
-                                            <strong>Usuários ativos:</strong> <?php echo $plan_row['users_count']; ?>
-                                        </div>
-                                        <div class="text-sm text-gray-600 dark:text-slate-400 mt-1">
-                                            <strong>Ordem de exibição:</strong> <?php echo $plan_row['display_order']; ?>
-                                        </div>
-                                        <div class="text-sm text-gray-600 dark:text-slate-400 mt-1">
-                                            <strong>Contratos disponíveis:</strong> 
-                                            <?php echo $plan_row['max_available_contracts'] == -1 ? 'Ilimitado' : number_format($plan_row['max_available_contracts']); ?>
-                                        </div>
-                                    </div>
-                                    
-                                    <?php 
-                                    $features = json_decode($plan_row['features'], true) ?: [];
-                                    if (!empty($features)): 
-                                    ?>
+                                        
                                         <div class="mb-4">
-                                            <h4 class="text-sm font-medium text-gray-900 dark:text-slate-100 mb-2">Funcionalidades:</h4>
-                                            <ul class="text-sm text-gray-600 dark:text-slate-400 space-y-1">
-                                                <?php foreach ($features as $feature): ?>
-                                                    <li class="flex items-center">
-                                                        <i class="fas fa-check text-green-500 mr-2 text-xs"></i>
-                                                        <?php echo htmlspecialchars($feature); ?>
-                                                    </li>
-                                                <?php endforeach; ?>
-                                            </ul>
+                                            <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                                                R$ <?php echo number_format($plan_row['price'], 2, ',', '.'); ?>
+                                                <span class="text-sm font-normal text-gray-500 dark:text-slate-400">/mês</span>
+                                            </div>
                                         </div>
-                                    <?php endif; ?>
-                                    
-                                    <div class="text-xs text-gray-500 dark:text-slate-500">
-                                        Criado em: <?php echo date('d/m/Y', strtotime($plan_row['created_at'])); ?>
+                                        
+                                        <?php if ($plan_row['description']): ?>
+                                            <p class="text-gray-600 dark:text-slate-400 mb-4"><?php echo htmlspecialchars($plan_row['description']); ?></p>
+                                        <?php endif; ?>
+                                        
+                                        <div class="mb-4">
+                                            <div class="text-sm text-gray-600 dark:text-slate-400">
+                                                <strong>Máximo de clientes:</strong> 
+                                                <?php echo $plan_row['max_clients'] >= 9999 ? 'Ilimitado' : number_format($plan_row['max_clients']); ?>
+                                            </div>
+                                            <div class="text-sm text-gray-600 dark:text-slate-400 mt-1">
+                                                <strong>Usuários ativos:</strong> <?php echo $plan_row['users_count']; ?>
+                                            </div>
+                                            <div class="text-sm text-gray-600 dark:text-slate-400 mt-1">
+                                                <strong>Ordem de exibição:</strong> <?php echo $plan_row['display_order']; ?>
+                                            </div>
+                                            <div class="text-sm text-gray-600 dark:text-slate-400 mt-1">
+                                                <strong>Contratos disponíveis:</strong> 
+                                                <?php echo $plan_row['max_available_contracts'] == -1 ? 'Ilimitado' : number_format($plan_row['max_available_contracts']); ?>
+                                            </div>
+                                        </div>
+                                        
+                                        <?php 
+                                        $features = json_decode($plan_row['features'], true) ?: [];
+                                        if (!empty($features)): 
+                                        ?>
+                                            <div class="mb-4">
+                                                <h4 class="text-sm font-medium text-gray-900 dark:text-slate-100 mb-2">Funcionalidades:</h4>
+                                                <ul class="text-sm text-gray-600 dark:text-slate-400 space-y-1">
+                                                    <?php foreach ($features as $feature): ?>
+                                                        <li class="flex items-center">
+                                                            <i class="fas fa-check text-green-500 mr-2 text-xs"></i>
+                                                            <?php echo htmlspecialchars($feature); ?>
+                                                        </li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                            </div>
+                                        <?php endif; ?>
+                                        
+                                        <div class="text-xs text-gray-500 dark:text-slate-500">
+                                            Criado em: <?php echo date('d/m/Y', strtotime($plan_row['created_at'])); ?>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -317,20 +322,22 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                       class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"></textarea>
                         </div>
                         
-                        <div>
-                            <label for="max_clients" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Máximo de Clientes *</label>
-                            <input type="number" name="max_clients" id="max_clients" min="1" required 
-                                   class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                                   placeholder="100">
-                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Use 9999 ou maior para ilimitado</p>
-                        </div>
-                        
-                        <div>
-                            <label for="display_order" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Ordem de Exibição *</label>
-                            <input type="number" name="display_order" id="display_order" required 
-                                   class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                                   placeholder="10">
-                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Números menores aparecem primeiro (ex: 10, 20, 30)</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="max_clients" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Máximo de Clientes *</label>
+                                <input type="number" name="max_clients" id="max_clients" min="1" required 
+                                       class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                                       placeholder="100">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Use 9999 ou maior para ilimitado</p>
+                            </div>
+                            
+                            <div>
+                                <label for="display_order" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Ordem de Exibição *</label>
+                                <input type="number" name="display_order" id="display_order" required 
+                                       class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                                       placeholder="10">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Números menores aparecem primeiro (ex: 10, 20, 30)</p>
+                            </div>
                         </div>
                         
                         <div>
@@ -432,7 +439,7 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
             div.className = 'feature-input flex items-center mb-2';
             div.innerHTML = `
                 <input type="text" name="features[]" value="${value}"
-                       class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5"
+                       class="flex-1 border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                        placeholder="Digite uma funcionalidade">
                 <button type="button" onclick="removeFeature(this)" 
                         class="ml-2 text-red-600 hover:text-red-800 p-2">
@@ -454,7 +461,7 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
             container.innerHTML = `
                 <div class="feature-input flex items-center mb-2">
                     <input type="text" name="features[]" 
-                           class="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5"
+                           class="flex-1 border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                            placeholder="Digite uma funcionalidade">
                     <button type="button" onclick="removeFeature(this)" 
                             class="ml-2 text-red-600 hover:text-red-800 p-2">
@@ -468,6 +475,46 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
         document.getElementById('planModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeModal();
+            }
+        });
+
+        // Validação do formulário
+        document.getElementById('planForm').addEventListener('submit', function(e) {
+            const name = document.getElementById('name').value.trim();
+            const price = document.getElementById('price').value;
+            const maxClients = document.getElementById('max_clients').value;
+            const displayOrder = document.getElementById('display_order').value;
+            const maxAvailableContracts = document.getElementById('max_available_contracts').value;
+            
+            if (!name) {
+                alert('Nome do plano é obrigatório');
+                e.preventDefault();
+                return;
+            }
+            
+            if (!price || isNaN(price) || parseFloat(price) < 0) {
+                alert('Preço deve ser um número positivo');
+                e.preventDefault();
+                return;
+            }
+            
+            if (!maxClients || isNaN(maxClients) || parseInt(maxClients) <= 0) {
+                alert('Máximo de clientes deve ser um número positivo');
+                e.preventDefault();
+                return;
+            }
+            
+            if (!displayOrder || isNaN(displayOrder)) {
+                alert('Ordem de exibição deve ser um número');
+                e.preventDefault();
+                return;
+            }
+            
+            if (!maxAvailableContracts || isNaN(maxAvailableContracts) || 
+                (parseInt(maxAvailableContracts) < 0 && parseInt(maxAvailableContracts) !== -1)) {
+                alert('Contratos disponíveis deve ser -1 (ilimitado) ou um número positivo');
+                e.preventDefault();
+                return;
             }
         });
     </script>
