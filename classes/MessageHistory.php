@@ -23,7 +23,8 @@ class MessageHistory {
     public function create() {
         $query = "INSERT INTO " . $this->table_name . " 
                   SET user_id=:user_id, client_id=:client_id, template_id=:template_id, 
-                      message=:message, phone=:phone, status=:status, whatsapp_message_id=:whatsapp_message_id, 
+                      message=:message, phone=:phone, status=:status, 
+                      whatsapp_message_id=:whatsapp_message_id, 
                       payment_id=:payment_id";
         
         $stmt = $this->conn->prepare($query);
@@ -38,9 +39,12 @@ class MessageHistory {
         $stmt->bindParam(":payment_id", $this->payment_id);
         
         if($stmt->execute()) {
+            error_log("Message history created successfully for client ID: " . $this->client_id);
             $this->id = $this->conn->lastInsertId();
             return true;
         }
+        
+        error_log("Failed to create message history: " . implode(", ", $stmt->errorInfo()));
         return false;
     }
 

@@ -158,12 +158,29 @@ try {
                     // Enviar mensagem de confirmação para o cliente
                     $payment_obj->readOne(); // Recarregar dados completos
                     
-                    // Carregar dados completos do usuário para ter acesso às informações de WhatsApp
+                    // Carregar dados completos do usuário e cliente para ter acesso às informações necessárias
                     $user_obj = new User($db);
                     $user_obj->id = $payment_row['user_id'];
+                    
                     if ($user_obj->readOne()) {
                         error_log("User WhatsApp status: instance=" . $user_obj->whatsapp_instance . ", connected=" . ($user_obj->whatsapp_connected ? 'true' : 'false'));
-                        $payment_obj->sendConfirmationMessage($client, $user_obj);
+                        
+                        // Garantir que temos os dados completos do cliente
+                        if (!isset($client->name) || empty($client->name)) {
+                            $client->readOne();
+                        }
+                        
+                        // Enviar mensagem de confirmação
+                        if ($user_obj->whatsapp_connected && !empty($user_obj->whatsapp_instance)) {
+                            $result = $payment_obj->sendConfirmationMessage($client, $user_obj);
+                            if ($result) {
+                                error_log("Payment confirmation message sent and recorded for client " . $client->name);
+                            } else {
+                                error_log("Failed to send payment confirmation message for client " . $client->name);
+                            }
+                        } else {
+                            error_log("WhatsApp not connected for user " . $user_obj->id . ", skipping confirmation message");
+                        }
                     } else {
                         error_log("Failed to load user data for payment confirmation: " . $payment_row['user_id']);
                     }
@@ -192,7 +209,7 @@ try {
     }
     
     // Atualizar última execução
-    $appSettings->set('payment_cron_last_run', date('Y-m-d H:i:s'), 'Última execução do cron de pagamentos', 'string');
+    $appSettings->updateCronLastRun();
     
 } catch (Exception $e) {
     error_log("Critical error in payment cron job: " . $e->getMessage());
@@ -216,6 +233,88 @@ if (!empty($stats['errors'])) {
 // Enviar relatório se houver atividade significativa
 if ($stats['payments_approved'] > 0 || $stats['payments_failed'] > 0 || !empty($stats['errors'])) {
     sendPaymentReport($stats);
+}
+
+/**
+ * Enviar email de confirmação de pagamento
+ */
+function sendPaymentConfirmationEmail($payment_data, $user, $db) {
+    try {
+        if (!defined('ADMIN_EMAIL') || empty(ADMIN_EMAIL)) {
+            return;
+        }
+        
+        // Buscar informações do plano
+        $query = "SELECT name FROM plans WHERE id = :plan_id";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(':plan_id', $payment_data['plan_id']);
+        $stmt->execute();
+        $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Carregar dados do usuário se necessário
+        if (empty($user->email)) {
+            $user->readOne();
+        }
+        
+        $subject = "Pagamento Confirmado - " . getSiteName();
+        
+        $message = "
+        <html>
+        <head>
+            <title>Pagamento Confirmado</title>
+            <style>
+                body { font-family: Arial, sans-serif; }
+                .header { background-color: #10B981; color: white; padding: 20px; text-align: center; }
+                .content { padding: 20px; }
+                .success { background-color: #D1FAE5; color: #065F46; padding: 15px; border-radius: 5px; margin: 10px 0; }
+            </style>
+        </head>
+        <body>
+            <div class='header'>
+                <h1>✅ Pagamento Confirmado!</h1>
+                <p>" . getSiteName() . "</p>
+            </div>
+            
+            <div class='content'>
+                <div class='success'>
+                    <h3>Sua assinatura foi ativada com sucesso!</h3>
+                </div>
+                
+                <p><strong>Detalhes do Pagamento:</strong></p>
+                <ul>
+                    <li><strong>Plano:</strong> " . htmlspecialchars($plan['name'] ?? 'N/A') . "</li>
+                    <li><strong>Valor:</strong> R$ " . number_format($payment_data['amount'], 2, ',', '.') . "</li>
+                    <li><strong>Data:</strong> " . date('d/m/Y H:i') . "</li>
+                </ul>
+                
+                <p>Agora você pode acessar todas as funcionalidades do sistema!</p>
+                
+                <p><a href='" . SITE_URL . "/dashboard' style='background-color: #3B82F6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Acessar Dashboard</a></p>
+            </div>
+        </body>
+        </html>";
+        
+        $headers = [
+            'MIME-Version: 1.0',
+            'Content-type: text/html; charset=UTF-8',
+            'From: ' . getSiteName() . ' <noreply@' . parse_url(SITE_URL, PHP_URL_HOST) . '>',
+            'Reply-To: ' . ADMIN_EMAIL
+        ];
+        
+        // Enviar para o usuário
+        if (!empty($user->email)) {
+            mail($user->email, $subject, $message, implode("\r\n", $headers));
+            error_log("Payment confirmation email sent to: " . $user->email);
+        }
+        
+        // Notificar admin
+        $admin_subject = "Novo Pagamento Recebido - " . getSiteName();
+        $admin_message = str_replace('Sua assinatura foi ativada', 'Nova assinatura ativada para ' . ($user->name ?? 'Usuário'), $message);
+        mail(ADMIN_EMAIL, $admin_subject, $admin_message, implode("\r\n", $headers));
+        
+    } catch (Exception $e) {
+        error_log("Error sending payment confirmation email: " . $e->getMessage());
+    }
 }
 
 /**

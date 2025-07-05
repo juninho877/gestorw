@@ -284,7 +284,8 @@ class ClientPayment {
     /**
      * Enviar mensagem de confirmação de pagamento para o cliente
      */
-    public function sendConfirmationMessage($client, $user) {
+    public function sendConfirmationMessage($client, $user) 
+    {
         try {
             // Verificar se o WhatsApp está conectado
             if (empty($user->whatsapp_instance) || !$user->whatsapp_connected) {
@@ -312,6 +313,10 @@ class ClientPayment {
             $message_text = str_replace('{data_pagamento}', date('d/m/Y', strtotime($this->paid_at ?? 'now')), $message_text);
             $message_text = str_replace('{novo_vencimento}', date('d/m/Y', strtotime($client->due_date)), $message_text);
             
+            error_log("Sending payment confirmation message to client: " . $client->name);
+            error_log("Using WhatsApp instance: " . $user->whatsapp_instance);
+            error_log("Message template: " . substr($message_text, 0, 50) . "...");
+            
             // Enviar mensagem
             $whatsapp = new WhatsAppAPI();
             $result = $whatsapp->sendMessage($user->whatsapp_instance, $client->phone, $message_text);
@@ -327,19 +332,28 @@ class ClientPayment {
                 $messageHistory->status = 'sent';
                 $messageHistory->payment_id = $this->id;
                 
+                error_log("Creating message history record for payment confirmation");
+                
                 // Extrair e limpar ID da mensagem do WhatsApp se disponível
                 if (isset($result['data']['key']['id'])) {
                     $raw_id = $result['data']['key']['id'];
                     $messageHistory->whatsapp_message_id = cleanWhatsAppMessageId($raw_id);
-                    error_log("Raw WhatsApp message ID: '$raw_id', Cleaned: " . $messageHistory->whatsapp_message_id);
+                    error_log("Payment confirmation - Raw WhatsApp message ID: '$raw_id', Cleaned: " . $messageHistory->whatsapp_message_id);
                 }
                 
-                $messageHistory->create();
+                if ($messageHistory->create()) {
+                    error_log("Message history record created successfully with ID: " . $messageHistory->id);
+                } else {
+                    error_log("Failed to create message history record");
+                }
                 
                 error_log("Payment confirmation message sent to client {$client->name}");
                 return true;
             } else {
-                error_log("Failed to send payment confirmation message to client {$client->name}");
+                error_log("Failed to send payment confirmation message to client {$client->name}. Status code: " . $result['status_code']);
+                if (isset($result['data']['error'])) {
+                    error_log("Error message: " . $result['data']['error']);
+                }
                 return false;
             }
         } catch (Exception $e) {

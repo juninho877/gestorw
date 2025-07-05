@@ -314,6 +314,9 @@ function sendClientPaymentConfirmation($clientPayment, $db) {
         $message_text = str_replace('{data_pagamento}', date('d/m/Y', strtotime($clientPayment->paid_at ?? 'now')), $message_text);
         $message_text = str_replace('{novo_vencimento}', date('d/m/Y', strtotime($client->due_date)), $message_text);
         
+        error_log("Sending payment confirmation message from webhook to client: " . $client->name);
+        error_log("Using WhatsApp instance: " . $user->whatsapp_instance);
+        
         // Enviar mensagem
         $whatsapp = new WhatsAppAPI();
         $result = $whatsapp->sendMessage($user->whatsapp_instance, $client->phone, $message_text);
@@ -326,8 +329,8 @@ function sendClientPaymentConfirmation($clientPayment, $db) {
             $messageHistory->template_id = $template_id;
             $messageHistory->message = $message_text;
             $messageHistory->phone = $client->phone;
-            $messageHistory->status = 'sent';
-            $messageHistory->payment_id = $clientPayment->id;
+            $messageHistory->status = 'sent'; 
+            $messageHistory->payment_id = $clientPayment->id; // Link to the payment
             
             // Extrair e limpar ID da mensagem do WhatsApp se disponível
             if (isset($result['data']['key']['id'])) {
@@ -336,7 +339,11 @@ function sendClientPaymentConfirmation($clientPayment, $db) {
                 error_log("Raw WhatsApp message ID: '$raw_id', Cleaned: " . $messageHistory->whatsapp_message_id);
             }
             
-            $messageHistory->create();
+            if ($messageHistory->create()) {
+                error_log("Message history record created successfully from webhook");
+            } else {
+                error_log("Failed to create message history record from webhook");
+            }
             
             error_log("Payment confirmation message sent to client {$client->name}");
             return true;
@@ -431,4 +438,5 @@ function sendPaymentConfirmationEmail($payment, $user, $db) {
         error_log("Error sending payment confirmation email: " . $e->getMessage());
     }
 error_log("=== MERCADO PAGO WEBHOOK COMPLETED ===");
+
 ?>
