@@ -11,6 +11,8 @@ class Plan {
     public $price;
     public $features;
     public $max_clients;
+    public $display_order;
+    public $max_available_contracts;
 
     public function __construct($db) {
         $this->conn = $db;
@@ -19,7 +21,8 @@ class Plan {
     public function create() {
         $query = "INSERT INTO " . $this->table_name . " 
                   SET name=:name, description=:description, price=:price, 
-                      features=:features, max_clients=:max_clients";
+                      features=:features, max_clients=:max_clients,
+                      display_order=:display_order, max_available_contracts=:max_available_contracts";
         
         $stmt = $this->conn->prepare($query);
         
@@ -33,6 +36,8 @@ class Plan {
         $stmt->bindParam(":price", $this->price);
         $stmt->bindParam(":features", $this->features);
         $stmt->bindParam(":max_clients", $this->max_clients);
+        $stmt->bindParam(":display_order", $this->display_order);
+        $stmt->bindParam(":max_available_contracts", $this->max_available_contracts);
         
         if($stmt->execute()) {
             $this->id = $this->conn->lastInsertId();
@@ -42,7 +47,7 @@ class Plan {
     }
 
     public function readAll() {
-        $query = "SELECT * FROM " . $this->table_name . " ORDER BY price ASC";
+        $query = "SELECT * FROM " . $this->table_name . " ORDER BY display_order ASC, price ASC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt;
@@ -61,6 +66,8 @@ class Plan {
             $this->price = $row['price'];
             $this->features = $row['features'];
             $this->max_clients = $row['max_clients'];
+            $this->display_order = $row['display_order'];
+            $this->max_available_contracts = $row['max_available_contracts'];
             return true;
         }
         return false;
@@ -69,7 +76,8 @@ class Plan {
     public function update() {
         $query = "UPDATE " . $this->table_name . " 
                   SET name=:name, description=:description, price=:price, 
-                      features=:features, max_clients=:max_clients
+                      features=:features, max_clients=:max_clients,
+                      display_order=:display_order, max_available_contracts=:max_available_contracts
                   WHERE id=:id";
         
         $stmt = $this->conn->prepare($query);
@@ -84,6 +92,8 @@ class Plan {
         $stmt->bindParam(":price", $this->price);
         $stmt->bindParam(":features", $this->features);
         $stmt->bindParam(":max_clients", $this->max_clients);
+        $stmt->bindParam(":display_order", $this->display_order);
+        $stmt->bindParam(":max_available_contracts", $this->max_available_contracts);
         $stmt->bindParam(":id", $this->id);
         
         return $stmt->execute();
@@ -120,6 +130,14 @@ class Plan {
         
         if (empty($this->max_clients) || !is_numeric($this->max_clients) || $this->max_clients <= 0) {
             $errors[] = "Máximo de clientes deve ser um número positivo";
+        }
+
+        if (!is_numeric($this->display_order)) {
+            $errors[] = "Ordem de exibição deve ser um número";
+        }
+        
+        if (!is_numeric($this->max_available_contracts) || $this->max_available_contracts < 0) {
+            $errors[] = "Máximo de contratos disponíveis deve ser um número não negativo";
         }
         
         return $errors;
