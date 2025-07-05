@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../classes/MessageTemplate.php';
+require_once __DIR__ . '/../classes/User.php';
 
 // Verificar se está logado
 if (!isset($_SESSION['user_id'])) {
@@ -11,6 +12,7 @@ if (!isset($_SESSION['user_id'])) {
 $database = new Database();
 $db = $database->getConnection();
 $template = new MessageTemplate($db);
+$user = new User($db);
 
 // Verificar se é administrador usando role com fallback
 $is_admin = false;
@@ -534,6 +536,19 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                 // Adicionar os campos necessários
                 var actionInput = document.createElement('input');
                 actionInput.type = 'hidden';
+                actionInput.name = 'action';
+                actionInput.value = 'delete';
+                deleteForm.appendChild(actionInput);
+                
+                var idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'id';
+                idInput.value = id;
+                deleteForm.appendChild(idInput);
+                
+                // Adicionar o formulário ao documento e enviá-lo
+                document.body.appendChild(deleteForm);
+                deleteForm.submit();
                 actionInput.name = 'action';
                 actionInput.value = 'delete';
                 deleteForm.appendChild(actionInput);
