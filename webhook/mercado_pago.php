@@ -311,11 +311,11 @@ function sendClientPaymentConfirmation($clientPayment, $db) {
         // Personalizar mensagem
         $message_text = str_replace('{nome}', $client->name, $message_text);
         $message_text = str_replace('{valor}', 'R$ ' . number_format($clientPayment->amount, 2, ',', '.'), $message_text);
-        $message_text = str_replace('{data_pagamento}', date('d/m/Y', strtotime($clientPayment->paid_at)), $message_text);
+        $message_text = str_replace('{data_pagamento}', date('d/m/Y', strtotime($clientPayment->paid_at ?? 'now')), $message_text);
         
         // Buscar a data de vencimento atualizada do cliente
         $client_obj = new Client($db);
-        $client_obj->id = $client['id'];
+        $client_obj->id = $client_data['id'] ?? $client['id'];
         $client_obj->user_id = $clientPayment->user_id;
         
         if ($client_obj->readOne()) {
