@@ -416,14 +416,15 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                             }
                             
                             // Importante: Adicionar delay entre mensagens para garantir a ordem correta
-                            sleep(3);
+                            sleep(5);
                         }
 
                         // Enviar o código PIX em uma mensagem separada para facilitar a cópia
                         $code_only_message = $payment_result['pix_code'];
-                        error_log("Sending PIX code-only message to client {$client_data['name']} (length: " . strlen($code_only_message) . ")");
+                        error_log("Sending PIX code-only message to client {$client_data['name']}");
+                        error_log("PIX code length: " . strlen($code_only_message));
                         error_log("PIX code preview: " . substr($code_only_message, 0, 30) . "...");
-                        error_log("PIX code preview: " . substr($code_only_message, 0, 30) . "...");
+                        
                         $code_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $code_only_message);
                         
                         // Registrar mensagem do código PIX no histórico
@@ -440,6 +441,14 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                             $messageHistory->create();
                             
                             error_log("PIX code-only message sent to client {$client_data['name']}");
+                        } else {
+                            error_log("Failed to send PIX code-only message. Status code: " . $code_result['status_code']);
+                            if (isset($code_result['data']['error'])) {
+                                error_log("Error message: " . $code_result['data']['error']);
+                            }
+                            if (isset($code_result['data']['message'])) {
+                                error_log("Message: " . $code_result['data']['message']);
+                            }
                         }
                         
                     }
