@@ -183,7 +183,7 @@ if ($_POST) {
                                 $messageHistory->message = $message_text;
                                 $messageHistory->phone = $client->phone;
                                 $messageHistory->status = 'sent';
-                                $messageHistory->payment_id = $clientPayment->id;
+                                $messageHistory->payment_id = null;
                                 
                                 // Extrair e limpar ID da mensagem do WhatsApp se disponível
                                 if (isset($result['data']['key']['id'])) {
