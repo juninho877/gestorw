@@ -132,16 +132,14 @@ $stmt = $db->prepare($query);
 $stmt->execute();
 $all_plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Filtrar planos para garantir que não haja duplicatas
-$plans = [];
-$plan_ids = [];
-
+// Use plan ID as key to automatically handle uniqueness
+$unique_plans_map = [];
 foreach ($all_plans as $plan_data) {
-    if (!in_array($plan_data['id'], $plan_ids, true)) {
-        $plans[] = $plan_data;
-        $plan_ids[] = $plan_data['id'];
-    }
+    $unique_plans_map[$plan_data['id']] = $plan_data;
 }
+
+// Convert back to a numerically indexed array for consistent iteration
+$plans = array_values($unique_plans_map);
 
 // Buscar contagem de usuários por plano
 foreach ($plans as $index => &$plan_row) {
