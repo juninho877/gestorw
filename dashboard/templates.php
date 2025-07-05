@@ -249,6 +249,34 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                         </button>
                                     </div>
                                     
+                                    <!-- Templates com opções de PIX -->
+                                    <div class="border border-gray-200 dark:border-slate-600 rounded-lg p-4 hover:shadow-md transition-shadow duration-300 bg-white dark:bg-slate-700">
+                                        <h4 class="font-semibold text-gray-900 dark:text-slate-100 mb-2">Lembrete com PIX Automático (MP)</h4>
+                                        <p class="text-sm text-gray-600 dark:text-slate-400 mb-3">Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Para sua comodidade, você pode pagar via PIX usando o QR Code abaixo:<br>{pix_qr_code}<br>Ou copie e cole o código PIX: {pix_code}</p>
+                                        <button onclick="useTemplate('Lembrete com PIX Automático', 'custom', 'Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Para sua comodidade, você pode pagar via PIX usando o QR Code abaixo:\n\n{pix_qr_code}\n\nOu copie e cole o código PIX:\n{pix_code}')" 
+                                                class="text-purple-600 text-sm hover:underline">
+                                            Usar este template
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="border border-gray-200 dark:border-slate-600 rounded-lg p-4 hover:shadow-md transition-shadow duration-300 bg-white dark:bg-slate-700">
+                                        <h4 class="font-semibold text-gray-900 dark:text-slate-100 mb-2">Lembrete com PIX Manual</h4>
+                                        <p class="text-sm text-gray-600 dark:text-slate-400 mb-3">Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Para realizar o pagamento, faça um PIX para a chave: {manual_pix_key}</p>
+                                        <button onclick="useTemplate('Lembrete com PIX Manual', 'custom', 'Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Para realizar o pagamento, faça um PIX para a chave:\n\n{manual_pix_key}\n\nApós o pagamento, por favor, envie o comprovante para confirmarmos.')" 
+                                                class="text-purple-600 text-sm hover:underline">
+                                            Usar este template
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="border border-gray-200 dark:border-slate-600 rounded-lg p-4 hover:shadow-md transition-shadow duration-300 bg-white dark:bg-slate-700">
+                                        <h4 class="font-semibold text-gray-900 dark:text-slate-100 mb-2">Lembrete sem PIX</h4>
+                                        <p class="text-sm text-gray-600 dark:text-slate-400 mb-3">Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Por favor, realize o pagamento para evitar a suspensão do serviço.</p>
+                                        <button onclick="useTemplate('Lembrete sem PIX', 'custom', 'Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Por favor, realize o pagamento para evitar a suspensão do serviço.')" 
+                                                class="text-purple-600 text-sm hover:underline">
+                                            Usar este template
+                                        </button>
+                                    </div>
+                                    
                                     <div class="border border-gray-200 dark:border-slate-600 rounded-lg p-4 hover:shadow-md transition-shadow duration-300 bg-white dark:bg-slate-700">
                                         <h4 class="font-semibold text-gray-900 dark:text-slate-100 mb-2">Confirmação de Pagamento</h4>
                                         <p class="text-sm text-gray-600 dark:text-slate-400 mb-3">Olá {nome}! Recebemos seu pagamento de {valor} com sucesso. Obrigado! 👍</p>
@@ -412,6 +440,7 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                     <option value="boas_vindas">Boas Vindas</option>
                                     <option value="custom">Personalizado</option>
                                     <option value="payment_confirmed">Confirmação de Pagamento</option>
+                                    <option value="payment_confirmed">Confirmação de Pagamento</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -423,6 +452,11 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                       placeholder="Digite a mensagem do template..."></textarea>
                             <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
                                 Variáveis disponíveis: {nome}, {valor}, {vencimento}, {data_pagamento}
+                                <?php if (isset($payment_settings) && $payment_settings['payment_method_preference'] === 'auto_mp'): ?>
+                                , {pix_qr_code}, {pix_code}
+                                <?php elseif (isset($payment_settings) && $payment_settings['payment_method_preference'] === 'manual_pix'): ?>
+                                , {manual_pix_key}
+                                <?php endif; ?>
                                 <?php if ($payment_settings['payment_method_preference'] === 'auto_mp'): ?>
                                 , {pix_qr_code}, {pix_code}
                                 <?php elseif ($payment_settings['payment_method_preference'] === 'manual_pix'): ?>
