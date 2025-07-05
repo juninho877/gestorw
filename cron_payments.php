@@ -294,4 +294,5 @@ function sendPaymentReport($stats) {
         error_log("Error sending payment report: " . $e->getMessage());
     }
 }
+
 ?>
