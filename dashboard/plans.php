@@ -129,6 +129,7 @@ if ($_POST) {
 // Buscar todos os planos
 $plans_stmt = $plan->readAll();
 $plans = $plans_stmt->fetchAll();
+error_log("Plans fetched: " . print_r($plans, true));
 
 // Buscar contagem de usuários por plano
 foreach ($plans as &$plan_row) {
