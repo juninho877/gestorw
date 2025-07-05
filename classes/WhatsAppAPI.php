@@ -274,9 +274,9 @@ class WhatsAppAPI {
                 'presence' => 'composing'
             ],
             'mediaMessage' => [
-                'mediatype': 'image',
-                'caption': $caption,
-                'media': $imageBase64
+                'mediatype' => 'image',
+                'caption' => $caption,
+                'media' => $imageBase64
             ]
         ];
         
