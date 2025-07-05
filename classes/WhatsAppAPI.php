@@ -325,7 +325,7 @@ class WhatsAppAPI {
                 'presence' => 'composing'
             ],
             'image' => [
-                'url': 'data:image/png;base64,' . $processedImage
+                'url' => 'data:image/png;base64,' . $processedImage
             ],
             'caption' => $caption
         ];
