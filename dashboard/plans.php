@@ -1,6 +1,4 @@
 <?php
-debug($plans);
-?>
 require_once __DIR__ . '/auth_check.php'; // Middleware de autenticação
 require_once __DIR__ . '/../classes/Plan.php';
 
@@ -226,6 +224,9 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                     </button>
                                 </div>
                             <?php else: ?>
+                            <?php
+debug($plans);
+?>
                                 <?php foreach ($plans as $plan_row): ?>
                                 <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
                                     <div class="p-6">
