@@ -137,7 +137,7 @@ $plans = [];
 $plan_ids = [];
 
 foreach ($all_plans as $plan_data) {
-    if (!in_array($plan_data['id'], $plan_ids)) {
+    if (!in_array($plan_data['id'], $plan_ids, true)) {
         $plans[] = $plan_data;
         $plan_ids[] = $plan_data['id'];
     }
