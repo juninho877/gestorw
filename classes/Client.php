@@ -219,6 +219,17 @@ class Client {
         }
         
         // Atualizar a data de vencimento para a próxima data de pagamento
+        
+        // Se a data de vencimento atual for maior que a data de hoje (vencimento futuro)
+        if (!empty($this->due_date) && $this->due_date > $today) {
+            // Adicionar um mês à data de vencimento atual
+            $this->next_payment_date = date('Y-m-d', strtotime($this->due_date . ' + 1 month'));
+        } else {
+            // Se já estiver vencido ou for hoje, adicionar um mês à data de hoje
+            $this->next_payment_date = date('Y-m-d', strtotime($today . ' + 1 month'));
+        }
+        
+        // Atualizar a data de vencimento para a próxima data de pagamento
         $this->due_date = $this->next_payment_date;
         
         return $this->update();
