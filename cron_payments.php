@@ -150,7 +150,7 @@ try {
                     if ($client->readOne()) {
                         // Marcar pagamento como recebido e atualizar data de vencimento
                         $client->markPaymentReceived($paid_at);
-                        error_log("Client due date updated after payment. New due date: " . $client->due_date . " (Client ID: " . $client->id . ")");
+                        error_log("Client due date updated after payment. New due date: " . $client->due_date);
                     } else {
                         error_log("Client not found for payment: " . $payment_row['client_id']);
                     }
@@ -158,7 +158,15 @@ try {
                     // Enviar mensagem de confirmação para o cliente
                     $payment_obj->readOne(); // Recarregar dados completos
                     
-                    $payment_obj->sendConfirmationMessage($client, $user);
+                    // Carregar dados completos do usuário para ter acesso às informações de WhatsApp
+                    $user_obj = new User($db);
+                    $user_obj->id = $payment_row['user_id'];
+                    if ($user_obj->readOne()) {
+                        error_log("User WhatsApp status: instance=" . $user_obj->whatsapp_instance . ", connected=" . ($user_obj->whatsapp_connected ? 'true' : 'false'));
+                        $payment_obj->sendConfirmationMessage($client, $user_obj);
+                    } else {
+                        error_log("Failed to load user data for payment confirmation: " . $payment_row['user_id']);
+                    }
                     
                     $stats['payments_approved']++;
                     error_log("Client payment approved: " . $payment_row['id']);
