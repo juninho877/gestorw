@@ -20,6 +20,8 @@ require_once __DIR__ . '/classes/Payment.php';
 require_once __DIR__ . '/classes/ClientPayment.php';
 require_once __DIR__ . '/classes/MercadoPagoAPI.php';
 require_once __DIR__ . '/classes/AppSettings.php';
+require_once __DIR__ . '/webhook/cleanWhatsAppMessageId.php';
+require_once __DIR__ . '/webhook/mercado_pago.php';
 
 // Log de início
 error_log("=== PAYMENT VERIFICATION CRON JOB STARTED ===");
