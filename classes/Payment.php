@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/config.php';
 
 class Payment {
     private $conn;
@@ -267,6 +268,90 @@ class Payment {
         }
         
         return $errors;
+    }
+    
+    /**
+     * Enviar email de confirmação de pagamento
+     */
+    public function sendConfirmationEmail($user) {
+        try {
+            if (!defined('ADMIN_EMAIL') || empty(ADMIN_EMAIL)) {
+                return false;
+            }
+            
+            // Buscar informações do plano
+            $query = "SELECT name FROM plans WHERE id = :plan_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':plan_id', $this->plan_id);
+            $stmt->execute();
+            $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Carregar dados do usuário se necessário
+            if (empty($user->email)) {
+                $user->readOne();
+            }
+            
+            $subject = "Pagamento Confirmado - " . getSiteName();
+            
+            $message = "
+            <html>
+            <head>
+                <title>Pagamento Confirmado</title>
+                <style>
+                    body { font-family: Arial, sans-serif; }
+                    .header { background-color: #10B981; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 20px; }
+                    .success { background-color: #D1FAE5; color: #065F46; padding: 15px; border-radius: 5px; margin: 10px 0; }
+                </style>
+            </head>
+            <body>
+                <div class='header'>
+                    <h1>✅ Pagamento Confirmado!</h1>
+                    <p>" . getSiteName() . "</p>
+                </div>
+                
+                <div class='content'>
+                    <div class='success'>
+                        <h3>Sua assinatura foi ativada com sucesso!</h3>
+                    </div>
+                    
+                    <p><strong>Detalhes do Pagamento:</strong></p>
+                    <ul>
+                        <li><strong>Plano:</strong> " . htmlspecialchars($plan['name'] ?? 'N/A') . "</li>
+                        <li><strong>Valor:</strong> R$ " . number_format($this->amount, 2, ',', '.') . "</li>
+                        <li><strong>Data:</strong> " . date('d/m/Y H:i') . "</li>
+                    </ul>
+                    
+                    <p>Agora você pode acessar todas as funcionalidades do sistema!</p>
+                    
+                    <p><a href='" . SITE_URL . "/dashboard' style='background-color: #3B82F6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Acessar Dashboard</a></p>
+                </div>
+            </body>
+            </html>";
+            
+            $headers = [
+                'MIME-Version: 1.0',
+                'Content-type: text/html; charset=UTF-8',
+                'From: ' . getSiteName() . ' <noreply@' . parse_url(SITE_URL, PHP_URL_HOST) . '>',
+                'Reply-To: ' . ADMIN_EMAIL
+            ];
+            
+            // Enviar para o usuário
+            if (!empty($user->email)) {
+                mail($user->email, $subject, $message, implode("\r\n", $headers));
+                error_log("Payment confirmation email sent to: " . $user->email);
+            }
+            
+            // Notificar admin
+            $admin_subject = "Novo Pagamento Recebido - " . getSiteName();
+            $admin_message = str_replace('Sua assinatura foi ativada', 'Nova assinatura ativada para ' . ($user->name ?? 'Usuário'), $message);
+            mail(ADMIN_EMAIL, $admin_subject, $admin_message, implode("\r\n", $headers));
+            
+            return true;
+        } catch (Exception $e) {
+            error_log("Error sending payment confirmation email: " . $e->getMessage());
+            return false;
+        }
     }
 }
 ?>

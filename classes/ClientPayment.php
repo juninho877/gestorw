@@ -1,6 +1,10 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/MercadoPagoAPI.php';
+require_once __DIR__ . '/WhatsAppAPI.php';
+require_once __DIR__ . '/MessageTemplate.php';
+require_once __DIR__ . '/MessageHistory.php';
+require_once __DIR__ . '/../webhook/cleanWhatsAppMessageId.php';
 
 class ClientPayment {
     private $conn;
@@ -274,6 +278,73 @@ class ClientPayment {
                 'success' => false,
                 'error' => 'Erro ao gerar pagamento: ' . $e->getMessage()
             ];
+        }
+    }
+    
+    /**
+     * Enviar mensagem de confirmação de pagamento para o cliente
+     */
+    public function sendConfirmationMessage($client, $user) {
+        try {
+            // Verificar se o WhatsApp está conectado
+            if (empty($user->whatsapp_instance) || !$user->whatsapp_connected) {
+                error_log("WhatsApp not connected for user: " . $this->user_id);
+                return false;
+            }
+            
+            // Buscar template de confirmação de pagamento
+            $template = new MessageTemplate($this->conn);
+            $template->user_id = $this->user_id;
+            $message_text = '';
+            $template_id = null;
+            
+            if ($template->readByType($this->user_id, 'payment_confirmed')) {
+                $message_text = $template->message;
+                $template_id = $template->id;
+            } else {
+                // Template padrão se não encontrar
+                $message_text = "Olá {nome}! Recebemos seu pagamento de {valor} em {data_pagamento} com sucesso. Seu novo vencimento é {novo_vencimento}. Obrigado! 👍";
+            }
+            
+            // Personalizar mensagem
+            $message_text = str_replace('{nome}', $client->name, $message_text);
+            $message_text = str_replace('{valor}', 'R$ ' . number_format($this->amount, 2, ',', '.'), $message_text);
+            $message_text = str_replace('{data_pagamento}', date('d/m/Y', strtotime($this->paid_at ?? 'now')), $message_text);
+            $message_text = str_replace('{novo_vencimento}', date('d/m/Y', strtotime($client->due_date)), $message_text);
+            
+            // Enviar mensagem
+            $whatsapp = new WhatsAppAPI();
+            $result = $whatsapp->sendMessage($user->whatsapp_instance, $client->phone, $message_text);
+            
+            // Registrar no histórico
+            if ($result['status_code'] == 200 || $result['status_code'] == 201) {
+                $messageHistory = new MessageHistory($this->conn);
+                $messageHistory->user_id = $this->user_id;
+                $messageHistory->client_id = $this->client_id;
+                $messageHistory->template_id = $template_id;
+                $messageHistory->message = $message_text;
+                $messageHistory->phone = $client->phone;
+                $messageHistory->status = 'sent';
+                $messageHistory->payment_id = $this->id;
+                
+                // Extrair e limpar ID da mensagem do WhatsApp se disponível
+                if (isset($result['data']['key']['id'])) {
+                    $raw_id = $result['data']['key']['id'];
+                    $messageHistory->whatsapp_message_id = cleanWhatsAppMessageId($raw_id);
+                    error_log("Raw WhatsApp message ID: '$raw_id', Cleaned: " . $messageHistory->whatsapp_message_id);
+                }
+                
+                $messageHistory->create();
+                
+                error_log("Payment confirmation message sent to client {$client->name}");
+                return true;
+            } else {
+                error_log("Failed to send payment confirmation message to client {$client->name}");
+                return false;
+            }
+        } catch (Exception $e) {
+            error_log("Error sending payment confirmation: " . $e->getMessage());
+            return false;
         }
     }
 }
