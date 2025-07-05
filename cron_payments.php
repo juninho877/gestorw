@@ -12,7 +12,6 @@ require_once __DIR__ . '/classes/Client.php';
 require_once __DIR__ . '/classes/ClientPayment.php';
 require_once __DIR__ . '/classes/MercadoPagoAPI.php';
 require_once __DIR__ . '/classes/AppSettings.php';
-require_once __DIR__ . '/webhook/cleanWhatsAppMessageId.php';
 
 // Log de início
 error_log("=== PAYMENT VERIFICATION CRON JOB STARTED ===");
@@ -93,7 +92,7 @@ try {
                         error_log("Subscription activated for user " . $payment_row['user_id']);
                         
                         // Enviar email de confirmação
-                        sendPaymentConfirmationEmail($payment_row, $user, $db);
+                        $payment_obj->sendConfirmationEmail($user);
                     }
                     
                 } elseif ($new_status !== 'pending') {
@@ -159,11 +158,7 @@ try {
                     // Enviar mensagem de confirmação para o cliente
                     $payment_obj->readOne(); // Recarregar dados completos
                     
-                    // Incluir arquivo com a função de envio de confirmação
-                    require_once __DIR__ . '/webhook/mercado_pago.php';
-                    
-                    // Chamar a função do arquivo incluído
-                    sendClientPaymentConfirmation($payment_obj, $db);
+                    $payment_obj->sendConfirmationMessage($client, $user);
                     
                     $stats['payments_approved']++;
                     error_log("Client payment approved: " . $payment_row['id']);
