@@ -136,7 +136,7 @@ class Plan {
             $errors[] = "Ordem de exibição deve ser um número";
         }
         
-        if (!is_numeric($this->max_available_contracts) || ($this->max_available_contracts < 0 && $this->max_available_contracts != -1)) {
+        if (!is_numeric($this->max_available_contracts) || ($this->max_available_contracts < -1)) {
             $errors[] = "Máximo de contratos disponíveis deve ser um número não negativo";
         }
         

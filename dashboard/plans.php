@@ -127,19 +127,9 @@ if ($_POST) {
 }
 
 // Buscar todos os planos diretamente do banco para garantir que todos sejam exibidos
-$query = "SELECT * FROM plans ORDER BY display_order ASC, price ASC";
-$stmt = $db->prepare($query);
-$stmt->execute();
-$all_plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Use plan ID as key to automatically handle uniqueness
-$unique_plans_map = [];
-foreach ($all_plans as $plan_data) {
-    $unique_plans_map[$plan_data['id']] = $plan_data;
-}
-
-// Convert back to a numerically indexed array for consistent iteration
-$plans = array_values($unique_plans_map);
+// Buscar todos os planos
+$plans_stmt = $plan->readAll();
+$plans = $plans_stmt->fetchAll();
 
 // Buscar contagem de usuários por plano
 foreach ($plans as $index => &$plan_row) {

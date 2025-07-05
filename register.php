@@ -88,11 +88,19 @@ if ($_POST) {
 // Buscar informações do plano
 $database = new Database();
 $db = $database->getConnection();
-$query = "SELECT * FROM plans WHERE id = :plan_id";
+$query = "SELECT * FROM plans WHERE id = :plan_id LIMIT 1";
 $stmt = $db->prepare($query);
 $stmt->bindParam(':plan_id', $plan_id);
 $stmt->execute();
-$plan = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Se o plano não for encontrado, use o primeiro plano disponível
+if ($stmt->rowCount() === 0) {
+    $query = "SELECT * FROM plans ORDER BY display_order ASC, price ASC LIMIT 1";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+}
+
+$plan = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['name' => 'Básico', 'price' => 0, 'id' => 1];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

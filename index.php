@@ -2,12 +2,18 @@
 require_once 'config/config.php';
 require_once 'config/database.php';
 require_once 'classes/AppSettings.php';
+require_once 'classes/Plan.php';
 
 // Obter número de dias de teste das configurações
 $database = new Database();
 $db = $database->getConnection();
 $appSettings = new AppSettings($db);
 $trial_days = $appSettings->getTrialDays();
+
+// Buscar planos para exibição na página de vendas
+$plan = new Plan($db);
+$plans_stmt = $plan->readAll();
+$plans = $plans_stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -169,112 +175,62 @@ $trial_days = $appSettings->getTrialDays();
             </div>
 
             <div class="grid md:grid-cols-3 gap-8">
-                <!-- Plano Básico -->
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 md:p-8">
-                    <div class="text-center">
-                        <h3 class="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-4">Básico</h3>
-                        <div class="mb-6">
-                            <span class="text-4xl font-bold text-gray-900 dark:text-slate-100">R$ 29</span>
-                            <span class="text-gray-600 dark:text-slate-400">,90/mês</span>
-                        </div>
-                        <ul class="text-left space-y-3 mb-8 text-gray-700 dark:text-slate-300">
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Até 100 clientes
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Mensagens automáticas
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Suporte por email
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Relatórios básicos
-                            </li>
-                        </ul>
-                        <a href="register.php?plan=1" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-800 transition block text-center">
-                            Começar Agora
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Plano Profissional -->
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 md:p-8 border-2 border-blue-500 dark:border-blue-600 relative">
+                <?php 
+                // Encontrar o plano mais popular (assumindo que é o segundo na ordem de exibição)
+                $popular_plan_index = count($plans) >= 2 ? 1 : 0;
+                
+                foreach ($plans as $index => $plan): 
+                    $is_popular = ($index === $popular_plan_index);
+                    $features = json_decode($plan['features'], true) ?: [];
+                    $price_whole = floor($plan['price']);
+                    $price_decimal = number_format($plan['price'] - $price_whole, 2);
+                    $price_decimal = str_replace('0.', ',', $price_decimal);
+                ?>
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 md:p-8 <?php echo $is_popular ? 'border-2 border-blue-500 dark:border-blue-600 relative transform hover:scale-105' : 'hover:shadow-xl'; ?> transition-all duration-300">
+                    <?php if ($is_popular): ?>
                     <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
                         <span class="bg-blue-500 dark:bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">Mais Popular</span>
                     </div>
+                    <?php endif; ?>
                     <div class="text-center">
-                        <h3 class="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-4">Profissional</h3>
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-4"><?php echo htmlspecialchars($plan['name']); ?></h3>
                         <div class="mb-6">
-                            <span class="text-4xl font-bold text-gray-900 dark:text-slate-100">R$ 59</span>
-                            <span class="text-gray-600 dark:text-slate-400">,90/mês</span>
+                            <span class="text-4xl font-bold text-gray-900 dark:text-slate-100">R$ <?php echo $price_whole; ?></span>
+                            <span class="text-gray-600 dark:text-slate-400"><?php echo $price_decimal; ?>/mês</span>
                         </div>
+                        <?php if (!empty($plan['description'])): ?>
+                        <p class="text-gray-600 dark:text-slate-400 mb-4"><?php echo htmlspecialchars($plan['description']); ?></p>
+                        <?php endif; ?>
                         <ul class="text-left space-y-3 mb-8 text-gray-700 dark:text-slate-300">
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Até 500 clientes
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Mensagens automáticas
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Relatórios avançados
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Suporte prioritário
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Templates ilimitados
-                            </li>
+                            <?php if (!empty($features)): ?>
+                                <?php foreach ($features as $feature): ?>
+                                <li class="flex items-center">
+                                    <i class="fas fa-check text-green-500 mr-3"></i>
+                                    <?php echo htmlspecialchars($feature); ?>
+                                </li>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <li class="flex items-center">
+                                    <i class="fas fa-check text-green-500 mr-3"></i>
+                                    <?php echo $plan['max_clients'] >= 9999 ? 'Clientes ilimitados' : 'Até ' . number_format($plan['max_clients']) . ' clientes'; ?>
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-check text-green-500 mr-3"></i>
+                                    Mensagens automáticas
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-check text-green-500 mr-3"></i>
+                                    Suporte técnico
+                                </li>
+                            <?php endif; ?>
                         </ul>
-                        <a href="register.php?plan=2" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-800 transition block text-center">
+                        <a href="register.php?plan=<?php echo $plan['id']; ?>" 
+                           class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-800 transition block text-center <?php echo $is_popular ? 'transform hover:scale-105' : ''; ?>">
                             Começar Agora
                         </a>
                     </div>
                 </div>
-
-                <!-- Plano Empresarial -->
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 md:p-8">
-                    <div class="text-center">
-                        <h3 class="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-4">Empresarial</h3>
-                        <div class="mb-6">
-                            <span class="text-4xl font-bold text-gray-900 dark:text-slate-100">R$ 99</span>
-                            <span class="text-gray-600 dark:text-slate-400">,90/mês</span>
-                        </div>
-                        <ul class="text-left space-y-3 mb-8 text-gray-700 dark:text-slate-300">
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Clientes ilimitados
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Todas as funcionalidades
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Suporte 24/7
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                API personalizada
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-3"></i>
-                                Treinamento incluído
-                            </li>
-                        </ul>
-                        <a href="register.php?plan=3" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-800 transition block text-center">
-                            Começar Agora
-                        </a>
-                    </div>
-                </div>
+                <?php endforeach; ?>
             </div>
         </div>
     </section>
