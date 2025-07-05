@@ -70,7 +70,9 @@ if ($_POST) {
                 'whatsapp_delay_seconds' => 'number',
                 'max_retry_attempts' => 'number',
                 'mercado_pago_access_token' => 'string',
-                'mercado_pago_public_key' => 'string', 
+                'mercado_pago_public_key' => 'string',
+                'evolution_api_url' => 'string',
+                'evolution_api_key' => 'string',
                 'trial_days' => 'number',
                 // Novas configurações de notificação
                 'notify_5_days_before' => 'boolean',
@@ -462,6 +464,38 @@ $timezones = [
                                                 2. Vá em "Suas integrações" → "Credenciais"<br>
                                                 3. Copie o Access Token de produção<br>
                                                 4. Cole aqui para ativar os pagamentos PIX
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Configurações da API Evolution -->
+                                    <div class="border-t dark:border-slate-600 pt-6">
+                                        <h4 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-4">Configurações da API Evolution (WhatsApp)</h4>
+                                        <div class="grid grid-cols-1 gap-4">
+                                            <div>
+                                                <label for="evolution_api_url" class="block text-sm font-medium text-gray-700 dark:text-slate-300">URL da API</label>
+                                                <input type="text" name="evolution_api_url" id="evolution_api_url" 
+                                                       value="<?php echo htmlspecialchars($all_settings['evolution_api_url']['value'] ?? 'https://evov2.duckdns.org'); ?>"
+                                                       class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                                                       placeholder="https://evov2.duckdns.org">
+                                                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">URL da API Evolution para conexão com WhatsApp</p>
+                                            </div>
+                                            
+                                            <div>
+                                                <label for="evolution_api_key" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Chave da API</label>
+                                                <input type="password" name="evolution_api_key" id="evolution_api_key" 
+                                                       value="<?php echo htmlspecialchars($all_settings['evolution_api_key']['value'] ?? '79Bb4lpu2TzxrSMu3SDfSGvB3MIhkur7'); ?>"
+                                                       class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                                                       placeholder="Sua chave da API Evolution">
+                                                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Chave de autenticação para a API Evolution</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                            <p class="text-sm text-blue-800 dark:text-blue-300">
+                                                <i class="fas fa-info-circle mr-2"></i>
+                                                <strong>Nota:</strong> Estas configurações afetam a conexão com o WhatsApp. Altere apenas se você tiver sua própria instância da API Evolution.
+                                                Após alterar, os usuários precisarão reconectar seus WhatsApps.
                                             </p>
                                         </div>
                                     </div>
