@@ -457,17 +457,7 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                 Variáveis disponíveis: {nome}, {valor}, {vencimento}, {data_pagamento}
                                 <?php 
                                 // Carregar configurações de pagamento do usuário
-                                $payment_settings = $user->getPaymentSettings($user_id);
-                                
-                                if ($payment_settings['payment_method_preference'] === 'auto_mp'): 
-                                ?>
-                                , {pix_qr_code}, {pix_code}
-                                <?php elseif ($payment_settings['payment_method_preference'] === 'manual_pix'): ?>
-                                , {manual_pix_key}
-                                <?php endif; ?>
-                                <?php 
-                                // Carregar configurações de pagamento do usuário
-                                $payment_settings = $user->getPaymentSettings($user_id);
+                                $payment_settings = $user->getPaymentSettings($_SESSION['user_id']);
                                 
                                 if ($payment_settings['payment_method_preference'] === 'auto_mp'): 
                                 ?>
