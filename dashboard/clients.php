@@ -153,7 +153,7 @@ if ($_POST) {
                                     $messageHistory->message = $message_text;
                                     $messageHistory->phone = $client->phone;
                                     $messageHistory->status = 'sent';
-                                    $messageHistory->payment_id = null;
+                                    $messageHistory->payment_id = null; // Must be null to avoid foreign key constraint violation
                                     
                                     // Extrair e limpar ID da mensagem do WhatsApp se disponível
                                     if (isset($result['data']['key']['id'])) {
@@ -162,7 +162,11 @@ if ($_POST) {
                                         $messageHistory->whatsapp_message_id = cleanWhatsAppMessageId($raw_id);
                                     }
                                     
-                                    $messageHistory->create();
+                                    if ($messageHistory->create()) {
+                                        error_log("Payment confirmation message history created successfully from clients.php");
+                                    } else {
+                                        error_log("Failed to create payment confirmation message history from clients.php");
+                                    }
                                     
                                     $_SESSION['message'] .= " Mensagem de confirmação enviada para o cliente.";
                                 }
@@ -208,7 +212,7 @@ if ($_POST) {
                                     $messageHistory->message = $message_text;
                                     $messageHistory->phone = $client->phone;
                                     $messageHistory->status = 'sent';
-                                    $messageHistory->payment_id = null;
+                                    $messageHistory->payment_id = null; // Must be null to avoid foreign key constraint violation
                                     
                                     // Extrair e limpar ID da mensagem do WhatsApp se disponível
                                     if (isset($result['data']['key']['id'])) {
@@ -217,7 +221,11 @@ if ($_POST) {
                                         $messageHistory->whatsapp_message_id = cleanWhatsAppMessageId($raw_id);
                                     }
                                     
-                                    $messageHistory->create();
+                                    if ($messageHistory->create()) {
+                                        error_log("Payment confirmation message history created successfully from clients.php");
+                                    } else {
+                                        error_log("Failed to create payment confirmation message history from clients.php");
+                                    }
                                     
                                     $_SESSION['message'] .= " Mensagem de confirmação enviada para o cliente.";
                                 }
