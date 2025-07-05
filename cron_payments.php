@@ -158,7 +158,7 @@ try {
                     if ($client->readOne()) {
                         // Marcar pagamento como recebido e atualizar data de vencimento
                         $client->markPaymentReceived($paid_at);
-                        error_log("Client due date updated after payment. New due date: " . $client->due_date);
+                        error_log("Client due date updated after payment. New due date: " . $client->due_date . " (Client ID: " . $client->id . ")");
                     } else {
                         error_log("Client not found for payment: " . $payment_row['client_id']);
                     }
