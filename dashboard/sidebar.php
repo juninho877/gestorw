@@ -54,6 +54,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <i class="fas fa-file-alt mr-3"></i>
                 Templates
             </a>
+            
+            <a href="client_payments.php" class="sidebar-link <?php echo $current_page == 'client_payments.php' ? 'bg-blue-600 text-white active' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                <i class="fas fa-receipt mr-3"></i>
+                Pagamentos de Clientes
+            </a>
             <a href="whatsapp.php" class="sidebar-link <?php echo $current_page == 'whatsapp.php' ? 'bg-blue-600 text-white active' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                 <i class="fas fa-qrcode mr-3"></i>
                 WhatsApp

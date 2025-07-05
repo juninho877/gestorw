@@ -59,6 +59,7 @@ class ClientPayment {
      */
     public function readOne() {
         $query = "SELECT * FROM " . $this->table_name . " WHERE id = :id LIMIT 1";
+        
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $this->id);
         $stmt->execute();
@@ -80,6 +81,22 @@ class ClientPayment {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Buscar todos os pagamentos de um usuário
+     */
+    public function readAllByUserId($user_id) {
+        $query = "SELECT cp.*, c.name as client_name, c.phone as client_phone, c.due_date as client_due_date 
+                  FROM " . $this->table_name . " cp 
+                  LEFT JOIN clients c ON cp.client_id = c.id 
+                  WHERE cp.user_id = :user_id 
+                  ORDER BY cp.created_at DESC";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':user_id', $user_id);
+        $stmt->execute();
+        return $stmt;
     }
 
     /**
