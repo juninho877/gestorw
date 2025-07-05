@@ -329,10 +329,8 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
         $message_text = str_replace('{vencimento}', date('d/m/Y', strtotime($client_data['due_date'])), $message_text);
         $message_text = str_replace('{data_pagamento}', date('d/m/Y'), $message_text);
         
-        // Remover placeholders não utilizados
-        $message_text = str_replace('{pix_qr_code}', '', $message_text);
-        $message_text = str_replace('{pix_code}', '', $message_text);
-        $message_text = str_replace('{manual_pix_key}', '', $message_text);
+        // Remover todos os placeholders relacionados a pagamento da mensagem principal
+        $message_text = preg_replace('/{pix_qr_code}|{pix_code}|{manual_pix_key}/', '', $message_text);
         
         // Enviar mensagem principal
         $result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $message_text);
@@ -370,6 +368,7 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
         if ($payment_method_preference === 'auto_mp' && !empty($user_data['mp_access_token'])) {
             // Gerar pagamento via Mercado Pago
             try {
+                error_log("Generating Mercado Pago payment for client {$client_data['name']}");
                 $database = new Database();
                 $db = $database->getConnection();
                 $clientPayment = new ClientPayment($db);
@@ -386,6 +385,7 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                 if ($payment_result['success']) {
                     // Salvar ID do pagamento para referência
                     $payment_id = $payment_result['payment_id'];
+                    $qr_code_base64 = $payment_result['qr_code_base64'] ?? null;
                     error_log("Payment generated for client {$client_data['name']}: ID {$payment_id}");
 
                     // Delay entre mensagens
@@ -393,7 +393,34 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
 
                     // Enviar mensagem com o código PIX
                     if (!empty($payment_result['pix_code'])) {
-                        $pix_message = "Para pagar, use o código PIX abaixo no aplicativo do seu banco:\n\n" . $payment_result['pix_code'];
+                        // Primeiro, enviar a imagem do QR code se disponível
+                        if (!empty($qr_code_base64)) {
+                            error_log("Sending QR code image to client {$client_data['name']}");
+                            $qr_caption = "Escaneie este QR Code para pagar via PIX:";
+                            $qr_result = $whatsapp->sendImage($instance_name, $client_data['phone'], $qr_code_base64, $qr_caption);
+                            
+                            // Registrar mensagem da imagem QR no histórico
+                            if ($qr_result['status_code'] == 200 || $qr_result['status_code'] == 201) {
+                                $qr_message_id = null;
+                                if (isset($qr_result['data']['key']['id'])) {
+                                    $qr_message_id = cleanWhatsAppMessageId($qr_result['data']['key']['id']);
+                                }
+                                
+                                $messageHistory->message = "[QR Code PIX]";
+                                $messageHistory->whatsapp_message_id = $qr_message_id;
+                                $messageHistory->status = 'sent';
+                                $messageHistory->payment_id = $payment_id;
+                                $messageHistory->create();
+                                
+                                error_log("QR code image sent to client {$client_data['name']}");
+                            }
+                            
+                            // Delay entre mensagens
+                            sleep(2);
+                        }
+                        
+                        // Agora enviar a mensagem de instruções (sem o código)
+                        $pix_message = "Para pagar, use o código PIX abaixo no aplicativo do seu banco:";
                         $pix_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $pix_message);
                         
                         // Delay entre mensagens
@@ -402,6 +429,7 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                         // Enviar o código PIX em uma mensagem separada para facilitar a cópia
                         if ($pix_result['status_code'] == 200 || $pix_result['status_code'] == 201) {
                             $code_only_message = $payment_result['pix_code'];
+                            error_log("Sending PIX code-only message to client {$client_data['name']}: " . substr($code_only_message, 0, 20) . "...");
                             $code_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $code_only_message);
                             
                             // Registrar mensagem do código PIX no histórico
@@ -448,9 +476,10 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
         } elseif ($payment_method_preference === 'manual_pix' && !empty($user_data['manual_pix_key'])) {
             // Delay entre mensagens
             sleep(2);
+            error_log("Sending manual PIX key message to client {$client_data['name']}");
             
             // Enviar mensagem com a chave PIX manual
-            $pix_message = "Para realizar o pagamento, faça um PIX para a chave:\n\n" . $user_data['manual_pix_key'] . "\n\nApós o pagamento, por favor, envie o comprovante para confirmarmos.";
+            $pix_message = "Para realizar o pagamento, faça um PIX para a chave:";
             $pix_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $pix_message);
             
             // Delay entre mensagens
@@ -459,6 +488,7 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
             // Enviar a chave PIX em uma mensagem separada para facilitar a cópia
             if ($pix_result['status_code'] == 200 || $pix_result['status_code'] == 201) {
                 $key_only_message = $user_data['manual_pix_key'];
+                error_log("Sending PIX key-only message to client {$client_data['name']}: " . $key_only_message);
                 $key_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $key_only_message);
                 
                 // Registrar mensagem da chave PIX no histórico
@@ -476,6 +506,29 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                     
                     error_log("PIX key-only message sent to client {$client_data['name']}");
                 }
+            }
+            
+            // Delay entre mensagens
+            sleep(2);
+            
+            // Enviar mensagem de confirmação
+            $confirmation_message = "Após o pagamento, por favor, envie o comprovante para confirmarmos.";
+            $confirmation_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $confirmation_message);
+            
+            // Registrar mensagem de confirmação no histórico
+            if ($confirmation_result['status_code'] == 200 || $confirmation_result['status_code'] == 201) {
+                $confirmation_message_id = null;
+                if (isset($confirmation_result['data']['key']['id'])) {
+                    $confirmation_message_id = cleanWhatsAppMessageId($confirmation_result['data']['key']['id']);
+                }
+                
+                $messageHistory->message = $confirmation_message;
+                $messageHistory->whatsapp_message_id = $confirmation_message_id;
+                $messageHistory->status = 'sent';
+                $messageHistory->payment_id = null;
+                $messageHistory->create();
+                
+                error_log("Confirmation message sent to client {$client_data['name']}");
             }
             
             // Registrar mensagem da chave PIX no histórico

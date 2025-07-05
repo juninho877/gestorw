@@ -231,6 +231,64 @@ class WhatsAppAPI {
         return $result;
     }
     
+    /**
+     * Enviar imagem via WhatsApp
+     * 
+     * @param string $instanceName Nome da instância do WhatsApp
+     * @param string $phone Número de telefone do destinatário
+     * @param string $imageBase64 Imagem em formato base64 (com ou sem prefixo data:image)
+     * @param string $caption Legenda opcional para a imagem
+     * @return array Resposta da API
+     */
+    public function sendImage($instanceName, $phone, $imageBase64, $caption = '') {
+        error_log("=== SEND IMAGE DEBUG ===");
+        error_log("Instance: " . $instanceName);
+        error_log("Original phone: " . $phone);
+        error_log("Caption length: " . strlen($caption));
+        error_log("Image base64 length: " . strlen($imageBase64));
+        
+        // Limpar o número de telefone - remover todos os caracteres não numéricos
+        $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+        error_log("Cleaned phone: " . $cleanPhone);
+        
+        // LÓGICA SIMPLIFICADA: Se não começar com 55, adicionar 55
+        if (!str_starts_with($cleanPhone, '55')) {
+            $finalPhone = '55' . $cleanPhone;
+        } else {
+            $finalPhone = $cleanPhone;
+        }
+        
+        error_log("Final phone number: " . $finalPhone);
+        
+        // Verificar se a imagem já tem o prefixo data:image
+        if (strpos($imageBase64, 'data:image') !== 0) {
+            // Assumir que é PNG se não tiver o prefixo
+            $imageBase64 = 'data:image/png;base64,' . $imageBase64;
+        }
+        
+        // Payload para envio de imagem
+        $data = [
+            'number' => $finalPhone,
+            'options' => [
+                'delay' => 1200,
+                'presence' => 'composing'
+            ],
+            'mediaMessage' => [
+                'mediatype': 'image',
+                'caption': $caption,
+                'media': $imageBase64
+            ]
+        ];
+        
+        error_log("Image payload format: " . json_encode($data));
+        
+        $result = $this->makeRequest("/message/sendMedia/{$instanceName}", 'POST', $data);
+        
+        error_log("Send image result: " . json_encode($result));
+        
+        return $result;
+    }
+    
     // Método para testar a conectividade da API
     public function testConnection() {
         return $this->makeRequest('/instance/fetchInstances');
