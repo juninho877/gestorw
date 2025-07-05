@@ -277,78 +277,7 @@ $whatsapp_connected = $_SESSION['whatsapp_connected'] ?? false;
                                 </form>
                             </div>
                         </div>
-                        
-                        <!-- Exemplos de Mensagens -->
-                        <div class="mt-8 bg-white dark:bg-slate-800 shadow-md rounded-lg overflow-hidden">
-                            <div class="px-6 py-6 sm:p-8">
-                                <h3 class="text-xl font-semibold text-gray-900 dark:text-slate-100 mb-4">Exemplos de Mensagens</h3>
-                                
-                                <div class="space-y-6">
-                                    <!-- Exemplo Mercado Pago Automático -->
-                                    <div id="example_auto_mp" class="<?php echo ($payment_settings['payment_method_preference'] === 'auto_mp') ? '' : 'hidden'; ?>">
-                                        <h4 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Exemplo com Mercado Pago Automático</h4>
-                                        <div class="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg">
-                                            <p class="text-gray-700 dark:text-slate-300 mb-4">
-                                                Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Para sua comodidade, você pode pagar via PIX usando o QR Code abaixo:
-                                            </p>
-                                            <div class="flex flex-col items-center mb-4 bg-white p-4 rounded-lg">
-                                                <div class="w-48 h-48 bg-gray-200 flex items-center justify-center mb-2">
-                                                    <i class="fas fa-qrcode text-gray-400 text-5xl"></i>
-                                                </div>
-                                                <p class="text-sm text-gray-500">QR Code PIX gerado automaticamente</p>
-                                            </div>
-                                            <p class="text-gray-700 dark:text-slate-300">
-                                                Ou copie e cole o código PIX: <span class="bg-gray-200 dark:bg-slate-600 p-1 rounded">00020126580014br.gov.bcb.pix0136...</span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Exemplo PIX Manual -->
-                                    <div id="example_manual_pix" class="<?php echo ($payment_settings['payment_method_preference'] === 'manual_pix') ? '' : 'hidden'; ?>">
-                                        <h4 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Exemplo com Chave PIX Manual</h4>
-                                        <div class="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg">
-                                            <p class="text-gray-700 dark:text-slate-300">
-                                                Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Para realizar o pagamento, faça um PIX para a chave:
-                                            </p>
-                                            <div class="my-4 p-3 bg-white dark:bg-slate-600 rounded-lg text-center">
-                                                <p class="font-medium text-gray-900 dark:text-slate-100">
-                                                    <?php echo htmlspecialchars($payment_settings['manual_pix_key'] ?? 'exemplo@email.com'); ?>
-                                                </p>
-                                            </div>
-                                            <p class="text-gray-700 dark:text-slate-300">
-                                                Após o pagamento, por favor, envie o comprovante para confirmarmos.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Exemplo Sem Opção de Pagamento -->
-                                    <div id="example_none" class="<?php echo ($payment_settings['payment_method_preference'] === 'none') ? '' : 'hidden'; ?>">
-                                        <h4 class="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Exemplo sem Opção de Pagamento</h4>
-                                        <div class="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg">
-                                            <p class="text-gray-700 dark:text-slate-300">
-                                                Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Por favor, realize o pagamento para evitar a suspensão do serviço.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                                    <p class="text-sm text-blue-800 dark:text-blue-300">
-                                        <i class="fas fa-lightbulb mr-2"></i>
-                                        <strong>Dica:</strong> Você pode personalizar suas mensagens de cobrança na seção 
-                                        <a href="templates.php" class="underline">Templates</a>. 
-                                        Os placeholders {pix_qr_code}, {pix_code} e {manual_pix_key} serão automaticamente substituídos 
-                                        nas mensagens de acordo com suas configurações.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
-    </div>
-
+                     
     <script>
         function togglePaymentMethod() {
             const method = document.querySelector('input[name="payment_method_preference"]:checked').value;
