@@ -254,8 +254,8 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                     <!-- Templates com opções de PIX -->
                                     <div class="border border-gray-200 dark:border-slate-600 rounded-lg p-4 hover:shadow-md transition-shadow duration-300 bg-white dark:bg-slate-700">
                                         <h4 class="font-semibold text-gray-900 dark:text-slate-100 mb-2">Lembrete com PIX Automático (MP)</h4>
-                                        <p class="text-sm text-gray-600 dark:text-slate-400 mb-3">Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Para sua comodidade, você pode pagar via PIX usando o QR Code abaixo:<br>{pix_qr_code}<br>Ou copie e cole o código PIX: {pix_code}</p>
-                                        <button onclick="useTemplate('Lembrete com PIX Automático', 'custom', 'Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Para sua comodidade, você pode pagar via PIX usando o QR Code abaixo:\n\n{pix_qr_code}\n\nOu copie e cole o código PIX:\n{pix_code}')" 
+                                        <p class="text-sm text-gray-600 dark:text-slate-400 mb-3">Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Para sua comodidade, você pode pagar via PIX copiando e colando o código abaixo:\n\n{pix_code}</p>
+                                        <button onclick="useTemplate('Lembrete com PIX Automático', 'custom', 'Olá {nome}! Sua mensalidade de {valor} vence em {vencimento}. Para sua comodidade, você pode pagar via PIX copiando e colando o código abaixo:\n\n{pix_code}')" 
                                                 class="text-purple-600 text-sm hover:underline">
                                             Usar este template
                                         </button>

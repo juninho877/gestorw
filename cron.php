@@ -352,67 +352,8 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                     // Adicionar QR Code e código PIX à mensagem
                     if (!empty($payment_result['qr_code_base64'])) {
                         // Substituir placeholder {pix_qr_code} com a imagem base64
-                        $qr_code_img = '<img src="data:image/png;base64,' . $payment_result['qr_code_base64'] . '" alt="QR Code PIX">';
-                        $message_text = str_replace('{pix_qr_code}', $qr_code_img, $message_text);
-                    }
-                    
-                    // Adicionar código PIX copia e cola
-                    if (!empty($payment_result['pix_code'])) {
-                        $message_text = str_replace('{pix_code}', $payment_result['pix_code'], $message_text);
-                    }
-                    
-                    // Salvar ID do pagamento para referência
-                    $payment_id = $payment_result['payment_id'];
-                    
-                    error_log("Payment generated for client {$client_data['name']}: ID {$payment_id}");
-                } else {
-                    error_log("Failed to generate payment for client {$client_data['name']}: " . $payment_result['error']);
-                    // Remover placeholders se o pagamento falhar
-                    $message_text = str_replace('{pix_qr_code}', '(Erro ao gerar QR Code)', $message_text);
-                    $message_text = str_replace('{pix_code}', '(Erro ao gerar código PIX)', $message_text);
-                }
-            } catch (Exception $e) {
-                error_log("Error generating payment: " . $e->getMessage());
-                // Remover placeholders se ocorrer erro
-                $message_text = str_replace('{pix_qr_code}', '(Erro ao gerar QR Code)', $message_text);
-                $message_text = str_replace('{pix_code}', '(Erro ao gerar código PIX)', $message_text);
-            }
-        } elseif ($payment_method_preference === 'manual_pix' && !empty($user_data['manual_pix_key'])) {
-            // Incluir chave PIX manual na mensagem
-            $message_text = str_replace('{manual_pix_key}', $user_data['manual_pix_key'], $message_text);
-        }
-        
-        // Remover placeholders não utilizados
-        $message_text = str_replace('{pix_qr_code}', '', $message_text);
-        $message_text = str_replace('{pix_code}', '', $message_text);
-        $message_text = str_replace('{manual_pix_key}', '', $message_text);
-        
-        // Processar opções de pagamento com base na preferência do usuário
-        $payment_id = null;
-        $payment_method_preference = $user_data['payment_method_preference'] ?? 'none';
-        
-        if ($payment_method_preference === 'auto_mp' && !empty($user_data['mp_access_token'])) {
-            // Gerar pagamento via Mercado Pago
-            try {
-                $database = new Database();
-                $db = $database->getConnection();
-                $clientPayment = new ClientPayment($db);
-                
-                $payment_result = $clientPayment->generateClientPayment(
-                    $user_id,
-                    $client_data['id'],
-                    $client_data['subscription_amount'],
-                    "Mensalidade " . date('m/Y') . " - " . $client_data['name'],
-                    $user_data['mp_access_token'],
-                    $user_data['mp_public_key']
-                );
-                
-                if ($payment_result['success']) {
-                    // Adicionar QR Code e código PIX à mensagem
-                    if (!empty($payment_result['qr_code_base64'])) {
-                        // Substituir placeholder {pix_qr_code} com a imagem base64
-                        $qr_code_img = '<img src="data:image/png;base64,' . $payment_result['qr_code_base64'] . '" alt="QR Code PIX">';
-                        $message_text = str_replace('{pix_qr_code}', $qr_code_img, $message_text);
+                        // Não podemos enviar imagens em mensagens de texto do WhatsApp, então removemos o placeholder
+                        $message_text = str_replace('{pix_qr_code}', '(QR Code não disponível via WhatsApp)', $message_text);
                     }
                     
                     // Adicionar código PIX copia e cola
@@ -465,7 +406,6 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
         $messageHistory->phone = $client_data['phone'];
         $messageHistory->whatsapp_message_id = $whatsapp_message_id;
         $messageHistory->status = ($result['status_code'] == 200 || $result['status_code'] == 201) ? 'sent' : 'failed';
-        $messageHistory->payment_id = $payment_id; // Vincular mensagem ao pagamento, se houver
         $messageHistory->payment_id = $payment_id; // Vincular mensagem ao pagamento, se houver
         
         $messageHistory->create();
