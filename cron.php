@@ -409,7 +409,7 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                                 $messageHistory->message = "[QR Code PIX]";
                                 $messageHistory->whatsapp_message_id = $qr_message_id;
                                 $messageHistory->status = 'sent';
-                                $messageHistory->payment_id = $payment_id;
+                                $messageHistory->payment_id = null;
                                 $messageHistory->create();
                                 
                                 error_log("QR code image sent to client {$client_data['name']}");
@@ -437,7 +437,7 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                             $messageHistory->message = $code_only_message;
                             $messageHistory->whatsapp_message_id = $code_message_id;
                             $messageHistory->status = 'sent';
-                            $messageHistory->payment_id = $payment_id;
+                            $messageHistory->payment_id = null;
                             $messageHistory->create();
                             
                             error_log("PIX code-only message sent to client {$client_data['name']}");
