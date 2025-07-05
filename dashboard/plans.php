@@ -129,13 +129,22 @@ if ($_POST) {
 // Buscar todos os planos diretamente do banco para garantir que todos sejam exibidos
 // Buscar todos os planos
 $plans_stmt = $plan->readAll();
-$plans = $plans_stmt->fetchAll();
+$original_plans = $plans_stmt->fetchAll();
 
-// Buscar contagem de usuários por plano
-foreach ($plans as $index => &$plan_row) {
+// Criar um novo array para armazenar os planos processados
+$plans = [];
+
+// Processar cada plano individualmente para evitar problemas de referência
+foreach ($original_plans as $plan_row) {
     $plan_obj = new Plan($db);
     $plan_obj->id = $plan_row['id'];
-    $plan_row['users_count'] = $plan_obj->getUsersCount();
+    
+    // Criar uma cópia do plano com a contagem de usuários
+    $processed_plan = $plan_row;
+    $processed_plan['users_count'] = $plan_obj->getUsersCount();
+    
+    // Adicionar ao array de planos processados
+    $plans[] = $processed_plan;
 }
 
 // Se está editando um plano
