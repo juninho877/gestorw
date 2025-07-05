@@ -36,6 +36,8 @@ if ($_POST) {
                     $plan->description = trim($_POST['description']);
                     $plan->price = floatval($_POST['price']);
                     $plan->max_clients = intval($_POST['max_clients']);
+                    $plan->display_order = intval($_POST['display_order']);
+                    $plan->max_available_contracts = intval($_POST['max_available_contracts']);
                     
                     // Processar features
                     $features = [];
@@ -72,6 +74,8 @@ if ($_POST) {
                     $plan->description = trim($_POST['description']);
                     $plan->price = floatval($_POST['price']);
                     $plan->max_clients = intval($_POST['max_clients']);
+                    $plan->display_order = intval($_POST['display_order']);
+                    $plan->max_available_contracts = intval($_POST['max_available_contracts']);
                     
                     // Processar features
                     $features = [];
@@ -232,10 +236,17 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                     <div class="mb-4">
                                         <div class="text-sm text-gray-600 dark:text-slate-400">
                                             <strong>Máximo de clientes:</strong> 
-                                            <?php echo $plan_row['max_clients'] == 9999 ? 'Ilimitado' : number_format($plan_row['max_clients']); ?>
+                                            <?php echo $plan_row['max_clients'] >= 9999 ? 'Ilimitado' : number_format($plan_row['max_clients']); ?>
                                         </div>
                                         <div class="text-sm text-gray-600 dark:text-slate-400 mt-1">
                                             <strong>Usuários ativos:</strong> <?php echo $plan_row['users_count']; ?>
+                                        </div>
+                                        <div class="text-sm text-gray-600 dark:text-slate-400 mt-1">
+                                            <strong>Ordem de exibição:</strong> <?php echo $plan_row['display_order']; ?>
+                                        </div>
+                                        <div class="text-sm text-gray-600 dark:text-slate-400 mt-1">
+                                            <strong>Contratos disponíveis:</strong> 
+                                            <?php echo $plan_row['max_available_contracts'] == -1 ? 'Ilimitado' : number_format($plan_row['max_available_contracts']); ?>
                                         </div>
                                     </div>
                                     
@@ -302,8 +313,25 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                         <div>
                             <label for="max_clients" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Máximo de Clientes *</label>
                             <input type="number" name="max_clients" id="max_clients" min="1" required 
-                                   class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100">
-                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Use 9999 para ilimitado</p>
+                                   class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                                   placeholder="100">
+                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Use 9999 ou maior para ilimitado</p>
+                        </div>
+                        
+                        <div>
+                            <label for="display_order" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Ordem de Exibição *</label>
+                            <input type="number" name="display_order" id="display_order" required 
+                                   class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                                   placeholder="10">
+                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Números menores aparecem primeiro (ex: 10, 20, 30)</p>
+                        </div>
+                        
+                        <div>
+                            <label for="max_available_contracts" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Contratos Disponíveis *</label>
+                            <input type="number" name="max_available_contracts" id="max_available_contracts" required 
+                                   class="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                                   placeholder="-1">
+                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Use -1 para ilimitado, ou um número para limitar (promoções)</p>
                         </div>
                         
                         <div>
@@ -346,6 +374,11 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
             document.getElementById('modalTitle').textContent = 'Adicionar Plano';
             document.getElementById('formAction').value = 'add';
             document.getElementById('planForm').reset();
+            
+            // Definir valores padrão para os novos campos
+            document.getElementById('display_order').value = '10';
+            document.getElementById('max_available_contracts').value = '-1';
+            
             resetFeatures();
         }
 
@@ -362,6 +395,8 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
             document.getElementById('description').value = plan.description || '';
             document.getElementById('price').value = plan.price;
             document.getElementById('max_clients').value = plan.max_clients;
+            document.getElementById('display_order').value = plan.display_order;
+            document.getElementById('max_available_contracts').value = plan.max_available_contracts;
             
             // Carregar features
             const features = JSON.parse(plan.features || '[]');
