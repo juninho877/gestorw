@@ -395,7 +395,7 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                     if (!empty($payment_result['pix_code'])) {
                         // Primeiro, enviar a imagem do QR code se disponível
                         if (!empty($qr_code_base64)) {
-                            error_log("Sending QR code image to client {$client_data['name']}");
+                            error_log("Sending QR code image to client {$client_data['name']} with caption");
                             $qr_caption = "Escaneie este QR Code ou Copie o codigo abaixo para pagar via PIX:";
                             $qr_result = $whatsapp->sendImage($instance_name, $client_data['phone'], $qr_code_base64, $qr_caption);
                             
@@ -415,13 +415,14 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                                 error_log("QR code image sent to client {$client_data['name']}");
                             }
                             
-                            // Delay entre mensagens
-                            sleep(2);
-                        }                        
+                            // Importante: Adicionar delay entre mensagens para garantir a ordem correta
+                            sleep(3);
+                        }
 
                         // Enviar o código PIX em uma mensagem separada para facilitar a cópia
                         $code_only_message = $payment_result['pix_code'];
-                        error_log("Sending PIX code-only message to client {$client_data['name']}: " . substr($code_only_message, 0, 20) . "...");
+                        error_log("Sending PIX code-only message to client {$client_data['name']} (length: " . strlen($code_only_message) . ")");
+                        error_log("PIX code preview: " . substr($code_only_message, 0, 30) . "...");
                         $code_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $code_only_message);
                         
                         // Registrar mensagem do código PIX no histórico
