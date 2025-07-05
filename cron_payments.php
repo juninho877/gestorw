@@ -12,7 +12,6 @@ require_once __DIR__ . '/classes/ClientPayment.php';
 require_once __DIR__ . '/classes/MercadoPagoAPI.php';
 require_once __DIR__ . '/classes/AppSettings.php';
 require_once __DIR__ . '/webhook/cleanWhatsAppMessageId.php';
-require_once __DIR__ . '/webhook/mercado_pago.php';
 
 // Log de início
 error_log("=== PAYMENT VERIFICATION CRON JOB STARTED ===");
@@ -158,6 +157,11 @@ try {
                     
                     // Enviar mensagem de confirmação para o cliente
                     $payment_obj->readOne(); // Recarregar dados completos
+                    
+                    // Incluir arquivo com a função de envio de confirmação
+                    require_once __DIR__ . '/webhook/mercado_pago.php';
+                    
+                    // Chamar a função do arquivo incluído
                     sendClientPaymentConfirmation($payment_obj, $db);
                     
                     $stats['payments_approved']++;
@@ -208,190 +212,6 @@ if (!empty($stats['errors'])) {
 // Enviar relatório se houver atividade significativa
 if ($stats['payments_approved'] > 0 || $stats['payments_failed'] > 0 || !empty($stats['errors'])) {
     sendPaymentReport($stats);
-}
-
-/**
- * Enviar email de confirmação de pagamento
- */
-function sendPaymentConfirmationEmail($payment_data, $user, $db) {
-    try {
-        if (!defined('ADMIN_EMAIL') || empty(ADMIN_EMAIL)) {
-            return;
-        }
-        
-        // Buscar informações do plano
-        $query = "SELECT name FROM plans WHERE id = :plan_id";
-        $stmt = $db->prepare($query);
-        $stmt->bindParam(':plan_id', $payment_data['plan_id']);
-        $stmt->execute();
-        $plan = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // Carregar dados do usuário se necessário
-        if (empty($user->email)) {
-            $user->readOne();
-        }
-        
-        $subject = "Pagamento Confirmado - " . getSiteName();
-        
-        $message = "
-        <html>
-        <head>
-            <title>Pagamento Confirmado</title>
-            <style>
-                body { font-family: Arial, sans-serif; }
-                .header { background-color: #10B981; color: white; padding: 20px; text-align: center; }
-                .content { padding: 20px; }
-                .success { background-color: #D1FAE5; color: #065F46; padding: 15px; border-radius: 5px; margin: 10px 0; }
-            </style>
-        </head>
-        <body>
-            <div class='header'>
-                <h1>✅ Pagamento Confirmado!</h1>
-                <p>" . getSiteName() . "</p>
-            </div>
-            
-            <div class='content'>
-                <div class='success'>
-                    <h3>Sua assinatura foi ativada com sucesso!</h3>
-                </div>
-                
-                <p><strong>Detalhes do Pagamento:</strong></p>
-                <ul>
-                    <li><strong>Plano:</strong> " . htmlspecialchars($plan['name'] ?? 'N/A') . "</li>
-                    <li><strong>Valor:</strong> R$ " . number_format($payment_data['amount'], 2, ',', '.') . "</li>
-                    <li><strong>Data:</strong> " . date('d/m/Y H:i') . "</li>
-                </ul>
-                
-                <p>Agora você pode acessar todas as funcionalidades do sistema!</p>
-                
-                <p><a href='" . SITE_URL . "/dashboard' style='background-color: #3B82F6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Acessar Dashboard</a></p>
-            </div>
-        </body>
-        </html>";
-        
-        $headers = [
-            'MIME-Version: 1.0',
-            'Content-type: text/html; charset=UTF-8',
-            'From: ' . getSiteName() . ' <noreply@' . parse_url(SITE_URL, PHP_URL_HOST) . '>',
-            'Reply-To: ' . ADMIN_EMAIL
-        ];
-        
-        // Enviar para o usuário
-        if (!empty($user->email)) {
-            mail($user->email, $subject, $message, implode("\r\n", $headers));
-            error_log("Payment confirmation email sent to: " . $user->email);
-        }
-        
-        // Notificar admin
-        $admin_subject = "Novo Pagamento Recebido - " . getSiteName();
-        $admin_message = str_replace('Sua assinatura foi ativada', 'Nova assinatura ativada para ' . ($user->name ?? 'Usuário'), $message);
-        mail(ADMIN_EMAIL, $admin_subject, $admin_message, implode("\r\n", $headers));
-        
-    } catch (Exception $e) {
-        error_log("Error sending payment confirmation email: " . $e->getMessage());
-    }
-}
-
-/**
- * Enviar mensagem de confirmação de pagamento para o cliente
- */
-function sendClientPaymentConfirmation($clientPayment, $db) {
-    try {
-        // Buscar dados do cliente
-        $client_query = "SELECT * FROM clients WHERE id = :id";
-        $client_stmt = $db->prepare($client_query);
-        $client_stmt->bindParam(':id', $clientPayment->client_id);
-        $client_stmt->execute();
-        
-        if ($client_stmt->rowCount() === 0) {
-            error_log("Client not found for payment confirmation: " . $clientPayment->client_id);
-            return false;
-        }
-        
-        $client = $client_stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // Buscar dados do usuário (dono do cliente)
-        $user_query = "SELECT * FROM users WHERE id = :id";
-        $user_stmt = $db->prepare($user_query);
-        $user_stmt->bindParam(':id', $clientPayment->user_id);
-        $user_stmt->execute();
-        
-        if ($user_stmt->rowCount() === 0) {
-            error_log("User not found for payment confirmation: " . $clientPayment->user_id);
-            return false;
-        }
-        
-        $user = $user_stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // Verificar se o WhatsApp está conectado
-        if (empty($user['whatsapp_instance']) || !$user['whatsapp_connected']) {
-            error_log("WhatsApp not connected for user: " . $clientPayment->user_id);
-            return false;
-        }
-        
-        // Buscar template de confirmação de pagamento
-        $template_query = "SELECT * FROM message_templates 
-                          WHERE user_id = :user_id AND type = 'payment_confirmed' AND active = 1 
-                          ORDER BY created_at DESC LIMIT 1";
-        $template_stmt = $db->prepare($template_query);
-        $template_stmt->bindParam(':user_id', $clientPayment->user_id);
-        $template_stmt->execute();
-        
-        $message_text = '';
-        $template_id = null;
-        
-        if ($template_stmt->rowCount() > 0) {
-            $template = $template_stmt->fetch(PDO::FETCH_ASSOC);
-            $message_text = $template['message'];
-            $template_id = $template['id'];
-        } else {
-            // Template padrão se não encontrar
-            $message_text = "Olá {nome}! Recebemos seu pagamento de {valor} com sucesso. Obrigado! 👍";
-        }
-        
-        // Personalizar mensagem
-        $message_text = str_replace('{nome}', $client['name'], $message_text);
-        $message_text = str_replace('{valor}', 'R$ ' . number_format($clientPayment->amount, 2, ',', '.'), $message_text);
-        $message_text = str_replace('{data_pagamento}', date('d/m/Y', strtotime($clientPayment->paid_at)), $message_text);
-        
-        // Buscar a data de vencimento atualizada do cliente
-        $client_obj = new Client($db);
-        $client_obj->id = $client['id'];
-        $client_obj->user_id = $clientPayment->user_id;
-        
-        if ($client_obj->readOne()) {
-            // Adicionar a nova data de vencimento à mensagem
-            $message_text = str_replace('{novo_vencimento}', date('d/m/Y', strtotime($client_obj->due_date)), $message_text);
-        }
-        
-        // Enviar mensagem
-        $whatsapp = new WhatsAppAPI();
-        $result = $whatsapp->sendMessage($user['whatsapp_instance'], $client['phone'], $message_text);
-        
-        // Registrar no histórico
-        if ($result['status_code'] == 200 || $result['status_code'] == 201) {
-            $history_query = "INSERT INTO message_history 
-                             (user_id, client_id, template_id, message, phone, status, payment_id) 
-                             VALUES (:user_id, :client_id, :template_id, :message, :phone, 'sent', :payment_id)";
-            $history_stmt = $db->prepare($history_query);
-            $history_stmt->bindParam(':user_id', $clientPayment->user_id);
-            $history_stmt->bindParam(':client_id', $clientPayment->client_id);
-            $history_stmt->bindParam(':template_id', $template_id);
-            $history_stmt->bindParam(':message', $message_text);
-            $history_stmt->bindParam(':phone', $client['phone']);
-            $history_stmt->bindParam(':payment_id', $clientPayment->id);
-            $history_stmt->execute();
-            
-            error_log("Payment confirmation message sent to client {$client['name']}");
-            return true;
-        } else {
-            error_log("Failed to send payment confirmation message to client {$client['name']}");
-            return false;
-        }
-    } catch (Exception $e) {
-        error_log("Error sending payment confirmation: " . $e->getMessage());
-        return false;
-    }
 }
 
 /**
