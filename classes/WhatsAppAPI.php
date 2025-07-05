@@ -17,11 +17,24 @@ class WhatsAppAPI {
     private function makeRequest($endpoint, $method = 'GET', $data = null) {
         $url = $this->api_url . $endpoint;
         
-        error_log("=== API REQUEST DEBUG ===");
-        error_log("Making request to: " . $url);
+        error_log("=== API REQUEST DEBUG [" . date('Y-m-d H:i:s') . "] ===");
+        error_log("URL: " . $url);
         error_log("Method: " . $method);
+        error_log("API Key: " . substr($this->api_key, 0, 5) . "...");
+        
         if ($data) {
-            error_log("Data: " . json_encode($data, JSON_PRETTY_PRINT));
+            error_log("Request payload: " . json_encode($data, JSON_PRETTY_PRINT));
+            
+            // Log specific details for image messages
+            if (isset($data['mediaMessage']) && $data['mediaMessage']['mediatype'] === 'image') {
+                $base64Data = $data['mediaMessage']['media'];
+                $base64Length = strlen($base64Data);
+                $base64Preview = substr($base64Data, 0, 100) . '...';
+                
+                error_log("Image data length: " . $base64Length . " characters");
+                error_log("Image data preview: " . $base64Preview);
+                error_log("Image caption: " . ($data['mediaMessage']['caption'] ?? 'None'));
+            }
         }
         
         $headers = [
@@ -29,7 +42,7 @@ class WhatsAppAPI {
             'apikey: ' . $this->api_key
         ];
         
-        error_log("Headers: " . json_encode($headers));
+        error_log("Headers: " . json_encode($headers, JSON_UNESCAPED_SLASHES));
         
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -37,14 +50,25 @@ class WhatsAppAPI {
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_VERBOSE, false);
+        curl_setopt($ch, CURLOPT_VERBOSE, true);
+        
+        // Capture verbose output
+        $verbose = fopen('php://temp', 'w+');
+        curl_setopt($ch, CURLOPT_STDERR, $verbose);
         
         if ($method === 'POST') {
             curl_setopt($ch, CURLOPT_POST, true);
             if ($data) {
                 $json_data = json_encode($data);
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $json_data);
-                error_log("JSON payload: " . $json_data);
+                error_log("JSON payload size: " . strlen($json_data) . " bytes");
+                
+                // Log the first 500 characters of the payload for debugging
+                if (strlen($json_data) > 500) {
+                    error_log("JSON payload preview: " . substr($json_data, 0, 500) . "...");
+                } else {
+                    error_log("JSON payload: " . $json_data);
+                }
             }
         } elseif ($method === 'DELETE') {
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
@@ -54,15 +78,32 @@ class WhatsAppAPI {
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
         $info = curl_getinfo($ch);
+
+        // Get verbose information
+        rewind($verbose);
+        $verboseLog = stream_get_contents($verbose);
+        fclose($verbose);
         
-        error_log("=== API RESPONSE DEBUG ===");
+        error_log("=== API RESPONSE DEBUG [" . date('Y-m-d H:i:s') . "] ===");
         error_log("Response code: " . $httpCode);
-        error_log("Response: " . $response);
+        
+        // Log response preview for large responses
+        if (strlen($response) > 1000) {
+            error_log("Response preview: " . substr($response, 0, 1000) . "...");
+        } else {
+            error_log("Response: " . $response);
+        }
+        
         error_log("Content type: " . $info['content_type']);
         error_log("Total time: " . $info['total_time']);
+        error_log("Size upload: " . $info['size_upload'] . " bytes");
+        error_log("Size download: " . $info['size_download'] . " bytes");
+        error_log("Speed upload: " . $info['speed_upload'] . " bytes/sec");
+        error_log("Speed download: " . $info['speed_download'] . " bytes/sec");
         
         if ($error) {
             error_log("cURL error: " . $error);
+            error_log("Verbose log: " . $verboseLog);
         }
         
         curl_close($ch);
@@ -243,9 +284,9 @@ class WhatsAppAPI {
     public function sendImage($instanceName, $phone, $imageBase64, $caption = '') {
         error_log("=== SEND IMAGE DEBUG ===");
         error_log("Instance: " . $instanceName);
-        error_log("Original phone: " . $phone);
-        error_log("Caption length: " . strlen($caption));
-        error_log("Image base64 length: " . strlen($imageBase64));
+        error_log("Phone: " . $phone);
+        error_log("Caption: " . $caption);
+        error_log("Image base64 length before processing: " . strlen($imageBase64));
         
         // Limpar o número de telefone - remover todos os caracteres não numéricos
         $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
@@ -260,11 +301,21 @@ class WhatsAppAPI {
         
         error_log("Final phone number: " . $finalPhone);
         
-        // Verificar se a imagem já tem o prefixo data:image
-        if (strpos($imageBase64, 'data:image') !== 0) {
-            // Assumir que é PNG se não tiver o prefixo
-            $imageBase64 = 'data:image/png;base64,' . $imageBase64;
+        // Process the base64 image data
+        $processedImage = $imageBase64;
+        
+        // Remove data:image prefix if present
+        if (strpos($processedImage, 'data:image') === 0) {
+            $parts = explode(';base64,', $processedImage);
+            if (count($parts) === 2) {
+                $processedImage = $parts[1];
+                error_log("Removed data:image prefix from base64 string");
+            }
         }
+        
+        error_log("Image base64 length after processing: " . strlen($processedImage));
+        error_log("Image base64 first 50 chars: " . substr($processedImage, 0, 50));
+        error_log("Image base64 last 50 chars: " . substr($processedImage, -50));
         
         // Payload para envio de imagem
         $data = [
@@ -276,15 +327,29 @@ class WhatsAppAPI {
             'mediaMessage' => [
                 'mediatype' => 'image',
                 'caption' => $caption,
-                'media' => $imageBase64
+                'media' => $processedImage
             ]
         ];
         
-        error_log("Image payload format: " . json_encode($data));
+        // Log the structure of the payload without the full image data
+        $logData = $data;
+        $logData['mediaMessage']['media'] = '[BASE64_DATA_OMITTED]';
+        error_log("Image payload structure: " . json_encode($logData, JSON_PRETTY_PRINT));
         
         $result = $this->makeRequest("/message/sendMedia/{$instanceName}", 'POST', $data);
         
-        error_log("Send image result: " . json_encode($result));
+        // Log the result
+        if ($result['status_code'] >= 200 && $result['status_code'] < 300) {
+            error_log("Image sent successfully! Status code: " . $result['status_code']);
+        } else {
+            error_log("Failed to send image. Status code: " . $result['status_code']);
+            if (isset($result['data']['error'])) {
+                error_log("Error message: " . $result['data']['error']);
+            }
+            if (isset($result['data']['message'])) {
+                error_log("Message: " . $result['data']['message']);
+            }
+        }
         
         return $result;
     }
