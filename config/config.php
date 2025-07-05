@@ -8,8 +8,8 @@ require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/../classes/AppSettings.php';
 
 // Configurações da API Evolution V2
-define('EVOLUTION_API_URL', 'https://evov2.duckdns.org');
-define('EVOLUTION_API_KEY', '79Bb4lpu2TzxrSMu3SDfSGvB3MIhkur7');
+define('EVOLUTION_API_URL', getAppSetting('evolution_api_url', 'https://evov2.duckdns.org'));
+define('EVOLUTION_API_KEY', getAppSetting('evolution_api_key', '79Bb4lpu2TzxrSMu3SDfSGvB3MIhkur7'));
 
 // Configurações do Mercado Pago
 define('MERCADO_PAGO_ACCESS_TOKEN', getAppSetting('mercado_pago_access_token', ''));

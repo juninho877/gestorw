@@ -220,6 +220,34 @@ class AppSettings {
     public function getWhatsAppDelay() {
         return $this->get('whatsapp_delay_seconds', 2);
     }
+    
+    /**
+     * Obter URL da API Evolution
+     */
+    public function getEvolutionApiUrl() {
+        return $this->get('evolution_api_url', 'https://evov2.duckdns.org');
+    }
+    
+    /**
+     * Obter chave da API Evolution
+     */
+    public function getEvolutionApiKey() {
+        return $this->get('evolution_api_key', '79Bb4lpu2TzxrSMu3SDfSGvB3MIhkur7');
+    }
+    
+    /**
+     * Definir URL da API Evolution
+     */
+    public function setEvolutionApiUrl($url) {
+        return $this->set('evolution_api_url', $url, 'URL da API Evolution para WhatsApp', 'string');
+    }
+    
+    /**
+     * Definir chave da API Evolution
+     */
+    public function setEvolutionApiKey($key) {
+        return $this->set('evolution_api_key', $key, 'Chave da API Evolution para WhatsApp', 'string');
+    }
 
     public function getMaxRetryAttempts() {
         return $this->get('max_retry_attempts', 3);

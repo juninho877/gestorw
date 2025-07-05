@@ -4,10 +4,15 @@ require_once __DIR__ . '/../config/config.php';
 class WhatsAppAPI {
     private $api_url;
     private $api_key;
-    
+
     public function __construct() {
-        $this->api_url = EVOLUTION_API_URL;
-        $this->api_key = EVOLUTION_API_KEY;
+        // Obter configurações do banco de dados
+        $database = new Database();
+        $db = $database->getConnection();
+        $appSettings = new AppSettings($db);
+        
+        $this->api_url = $appSettings->getEvolutionApiUrl();
+        $this->api_key = $appSettings->getEvolutionApiKey();
         
         // Log de depuração
         error_log("WhatsApp API initialized with URL: " . $this->api_url);
