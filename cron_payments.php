@@ -1,13 +1,4 @@
 <?php
-/**
- * Cron Job para Verificação de Pagamentos
- * 
- * Este script deve ser executado separadamente do cron de mensagens
- * Exemplo de configuração no crontab:
- * */5 * * * * /usr/bin/php /caminho/para/seu/projeto/cron_payments.php
- * 
- * Isso executará o script a cada 5 minutos para verificar pagamentos
- **/
 
 // Configurar timezone
 date_default_timezone_set('America/Sao_Paulo');
