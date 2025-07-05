@@ -390,10 +390,8 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                                             class="text-blue-600 hover:text-blue-900 p-2 rounded-full hover:bg-gray-200 transition duration-150">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
-                                                    <button type="button" 
-                                                            class="text-red-600 hover:text-red-900 p-2 rounded-full hover:bg-gray-200 transition duration-150 delete-template-btn"
-                                                            data-id="<?php echo $template_row['id']; ?>"
-                                                            data-name="<?php echo htmlspecialchars($template_row['name']); ?>">
+                                                    <button onclick="deleteTemplate(<?php echo $template_row['id']; ?>, '<?php echo htmlspecialchars($template_row['name']); ?>')" 
+                                                            class="text-red-600 hover:text-red-900 p-2 rounded-full hover:bg-gray-200 transition duration-150">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </div>
@@ -528,40 +526,15 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
 
         function deleteTemplate(id, name) {
             if (confirm('Tem certeza que deseja remover o template "' + name + '"?')) {
-                // Criar um formulário para enviar a solicitação de exclusão
-                var deleteForm = document.createElement('form');
-                deleteForm.method = 'POST';
-                deleteForm.style.display = 'none';
-                
-                // Adicionar os campos necessários
-                var actionInput = document.createElement('input');
-                actionInput.type = 'hidden';
-                actionInput.name = 'action';
-                actionInput.value = 'delete';
-                deleteForm.appendChild(actionInput);
-                
-                var idInput = document.createElement('input');
-                idInput.type = 'hidden';
-                idInput.name = 'id';
-                idInput.value = id;
-                deleteForm.appendChild(idInput);
-                
-                // Adicionar o formulário ao documento e enviá-lo
-                document.body.appendChild(deleteForm);
-                deleteForm.submit();
-                actionInput.name = 'action';
-                actionInput.value = 'delete';
-                deleteForm.appendChild(actionInput);
-                
-                var idInput = document.createElement('input');
-                idInput.type = 'hidden';
-                idInput.name = 'id';
-                idInput.value = id;
-                deleteForm.appendChild(idInput);
-                
-                // Adicionar o formulário ao documento e enviá-lo
-                document.body.appendChild(deleteForm);
-                deleteForm.submit();
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.style.display = 'none';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="id" value="${id}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
             }
         }
 
@@ -580,19 +553,6 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
             if (e.target === this) {
                 closeModal();
             }
-        });
-        
-        // Inicializar ao carregar a página
-        document.addEventListener('DOMContentLoaded', function() {
-            // Corrigir problema com o botão de exclusão
-            document.querySelectorAll('.delete-template-btn').forEach(function(btn) {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const id = this.getAttribute('data-id');
-                    const name = this.getAttribute('data-name');
-                    deleteTemplate(id, name);
-                });
-            });
         });
     </script>
 </body>
