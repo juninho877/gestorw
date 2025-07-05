@@ -287,7 +287,7 @@ function cleanWhatsAppMessageId($message_id) {
 /**
  * Função para enviar mensagem automática
  */
-function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $client_data, $instance_name, $template_type, $template_name, $user_data) {
+function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $client_data, $instance_name, $template_type, $template_name, $user_data = []) {
     try {
         // Buscar template por tipo
         $template->user_id = $user_id;
@@ -327,10 +327,45 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
         $message_text = str_replace('{nome}', $client_data['name'], $message_text);
         $message_text = str_replace('{valor}', 'R$ ' . number_format($client_data['subscription_amount'], 2, ',', '.'), $message_text);
         $message_text = str_replace('{vencimento}', date('d/m/Y', strtotime($client_data['due_date'])), $message_text);
+        $message_text = str_replace('{data_pagamento}', date('d/m/Y'), $message_text);
         
-        // Processar opções de pagamento com base na preferência do usuário
+        // Remover placeholders não utilizados
+        $message_text = str_replace('{pix_qr_code}', '', $message_text);
+        $message_text = str_replace('{pix_code}', '', $message_text);
+        $message_text = str_replace('{manual_pix_key}', '', $message_text);
+        
+        // Enviar mensagem principal
+        $result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $message_text);
+        
+        // Extrair e limpar ID da mensagem do WhatsApp se disponível
+        $whatsapp_message_id = null;
+        if (isset($result['data']['key']['id'])) {
+            $raw_id = $result['data']['key']['id'];
+            $whatsapp_message_id = cleanWhatsAppMessageId($raw_id);
+            error_log("Raw WhatsApp message ID: '$raw_id', Cleaned: '$whatsapp_message_id'");
+        }
+        
+        // Registrar mensagem principal no histórico
+        $messageHistory->user_id = $user_id;
+        $messageHistory->client_id = $client_data['id'];
+        $messageHistory->template_id = $template_id;
+        $messageHistory->message = $message_text;
+        $messageHistory->phone = $client_data['phone'];
+        $messageHistory->whatsapp_message_id = $whatsapp_message_id;
+        $messageHistory->status = ($result['status_code'] == 200 || $result['status_code'] == 201) ? 'sent' : 'failed';
+        $messageHistory->payment_id = null;
+        
+        $messageHistory->create();
+        
+        // Se a mensagem principal falhou, não enviar as mensagens de pagamento
+        if ($messageHistory->status !== 'sent') {
+            error_log("Main message failed to send to client {$client_data['name']}");
+            return false;
+        }
+        
+        // Processar opções de pagamento em mensagens separadas com base na preferência do usuário
         $payment_id = null;
-        $payment_method_preference = $user_data['payment_method_preference'] ?? 'none';
+        $payment_method_preference = isset($user_data['payment_method_preference']) ? $user_data['payment_method_preference'] : 'none';
         
         if ($payment_method_preference === 'auto_mp' && !empty($user_data['mp_access_token'])) {
             // Gerar pagamento via Mercado Pago
@@ -349,70 +384,72 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                 );
                 
                 if ($payment_result['success']) {
-                    // Adicionar QR Code e código PIX à mensagem
-                    if (!empty($payment_result['qr_code_base64'])) {
-                        // Substituir placeholder {pix_qr_code} com a imagem base64
-                        // Não podemos enviar imagens em mensagens de texto do WhatsApp, então removemos o placeholder
-                        $message_text = str_replace('{pix_qr_code}', '(QR Code não disponível via WhatsApp)', $message_text);
-                    }
-                    
-                    // Adicionar código PIX copia e cola
-                    if (!empty($payment_result['pix_code'])) {
-                        $message_text = str_replace('{pix_code}', $payment_result['pix_code'], $message_text);
-                    }
-                    
                     // Salvar ID do pagamento para referência
                     $payment_id = $payment_result['payment_id'];
-                    
                     error_log("Payment generated for client {$client_data['name']}: ID {$payment_id}");
+
+                    // Delay entre mensagens
+                    sleep(2);
+
+                    // Enviar mensagem com o código PIX
+                    if (!empty($payment_result['pix_code'])) {
+                        $pix_message = "Para pagar, use o código PIX abaixo no aplicativo do seu banco:\n\n" . $payment_result['pix_code'];
+                        $pix_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $pix_message);
+                        
+                        // Registrar mensagem do PIX no histórico
+                        if ($pix_result['status_code'] == 200 || $pix_result['status_code'] == 201) {
+                            $pix_message_id = null;
+                            if (isset($pix_result['data']['key']['id'])) {
+                                $pix_message_id = cleanWhatsAppMessageId($pix_result['data']['key']['id']);
+                            }
+                            
+                            $messageHistory->message = $pix_message;
+                            $messageHistory->whatsapp_message_id = $pix_message_id;
+                            $messageHistory->status = 'sent';
+                            $messageHistory->payment_id = $payment_id;
+                            $messageHistory->create();
+                            
+                            error_log("PIX code message sent to client {$client_data['name']}");
+                        } else {
+                            error_log("Failed to send PIX code message to client {$client_data['name']}");
+                        }
+                    }
                 } else {
                     error_log("Failed to generate payment for client {$client_data['name']}: " . $payment_result['error']);
-                    // Remover placeholders se o pagamento falhar
-                    $message_text = str_replace('{pix_qr_code}', '(Erro ao gerar QR Code)', $message_text);
-                    $message_text = str_replace('{pix_code}', '(Erro ao gerar código PIX)', $message_text);
                 }
             } catch (Exception $e) {
                 error_log("Error generating payment: " . $e->getMessage());
-                // Remover placeholders se ocorrer erro
-                $message_text = str_replace('{pix_qr_code}', '(Erro ao gerar QR Code)', $message_text);
-                $message_text = str_replace('{pix_code}', '(Erro ao gerar código PIX)', $message_text);
             }
         } elseif ($payment_method_preference === 'manual_pix' && !empty($user_data['manual_pix_key'])) {
-            // Incluir chave PIX manual na mensagem
-            $message_text = str_replace('{manual_pix_key}', $user_data['manual_pix_key'], $message_text);
+            // Delay entre mensagens
+            sleep(2);
+            
+            // Enviar mensagem com a chave PIX manual
+            $pix_message = "Para realizar o pagamento, faça um PIX para a chave:\n\n" . $user_data['manual_pix_key'] . "\n\nApós o pagamento, por favor, envie o comprovante para confirmarmos.";
+            $pix_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $pix_message);
+            
+            // Registrar mensagem da chave PIX no histórico
+            if ($pix_result['status_code'] == 200 || $pix_result['status_code'] == 201) {
+                $pix_message_id = null;
+                if (isset($pix_result['data']['key']['id'])) {
+                    $pix_message_id = cleanWhatsAppMessageId($pix_result['data']['key']['id']);
+                }
+                
+                $messageHistory->message = $pix_message;
+                $messageHistory->whatsapp_message_id = $pix_message_id;
+                $messageHistory->status = 'sent';
+                $messageHistory->payment_id = null;
+                $messageHistory->create();
+                
+                error_log("Manual PIX key message sent to client {$client_data['name']}");
+            } else {
+                error_log("Failed to send manual PIX key message to client {$client_data['name']}");
+            }
         }
         
-        // Remover placeholders não utilizados
-        $message_text = str_replace('{pix_qr_code}', '', $message_text);
-        $message_text = str_replace('{pix_code}', '', $message_text);
-        $message_text = str_replace('{manual_pix_key}', '', $message_text);
+        error_log("Messages sent to client {$client_data['name']} ({$client_data['phone']})");
         
-        // Enviar mensagem
-        $result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $message_text);
-        
-        // Extrair e limpar ID da mensagem do WhatsApp se disponível
-        $whatsapp_message_id = null;
-        if (isset($result['data']['key']['id'])) {
-            $raw_id = $result['data']['key']['id'];
-            $whatsapp_message_id = cleanWhatsAppMessageId($raw_id);
-            error_log("Raw WhatsApp message ID: '$raw_id', Cleaned: '$whatsapp_message_id'");
-        }
-        
-        // Registrar no histórico
-        $messageHistory->user_id = $user_id;
-        $messageHistory->client_id = $client_data['id'];
-        $messageHistory->template_id = $template_id;
-        $messageHistory->message = $message_text;
-        $messageHistory->phone = $client_data['phone'];
-        $messageHistory->whatsapp_message_id = $whatsapp_message_id;
-        $messageHistory->status = ($result['status_code'] == 200 || $result['status_code'] == 201) ? 'sent' : 'failed';
-        $messageHistory->payment_id = $payment_id; // Vincular mensagem ao pagamento, se houver
-        
-        $messageHistory->create();
-        
-        error_log("Message sent to client {$client_data['name']} ({$client_data['phone']}): " . $messageHistory->status);
-        
-        return $messageHistory->status === 'sent';
+        return true;
         
     } catch (Exception $e) {
         error_log("Error sending message to client {$client_data['name']}: " . $e->getMessage());
