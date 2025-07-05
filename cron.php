@@ -396,7 +396,7 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                         // Primeiro, enviar a imagem do QR code se disponível
                         if (!empty($qr_code_base64)) {
                             error_log("Sending QR code image to client {$client_data['name']}");
-                            $qr_caption = "Escaneie este QR Code para pagar via PIX:";
+                            $qr_caption = "Escaneie este QR Code ou Copie o codigo abaixo para pagar via PIX:";
                             $qr_result = $whatsapp->sendImage($instance_name, $client_data['phone'], $qr_code_base64, $qr_caption);
                             
                             // Registrar mensagem da imagem QR no histórico
@@ -417,55 +417,29 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                             
                             // Delay entre mensagens
                             sleep(2);
-                        }
-                        
-                        // Agora enviar a mensagem de instruções (sem o código)
-                        $pix_message = "Para pagar, use o código PIX abaixo no aplicativo do seu banco:";
-                        $pix_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $pix_message);
-                        
-                        // Delay entre mensagens
-                        sleep(2);
-                        
+                        }                        
+
                         // Enviar o código PIX em uma mensagem separada para facilitar a cópia
-                        if ($pix_result['status_code'] == 200 || $pix_result['status_code'] == 201) {
-                            $code_only_message = $payment_result['pix_code'];
-                            error_log("Sending PIX code-only message to client {$client_data['name']}: " . substr($code_only_message, 0, 20) . "...");
-                            $code_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $code_only_message);
-                            
-                            // Registrar mensagem do código PIX no histórico
-                            if ($code_result['status_code'] == 200 || $code_result['status_code'] == 201) {
-                                $code_message_id = null;
-                                if (isset($code_result['data']['key']['id'])) {
-                                    $code_message_id = cleanWhatsAppMessageId($code_result['data']['key']['id']);
-                                }
-                                
-                                $messageHistory->message = $code_only_message;
-                                $messageHistory->whatsapp_message_id = $code_message_id;
-                                $messageHistory->status = 'sent';
-                                $messageHistory->payment_id = $payment_id;
-                                $messageHistory->create();
-                                
-                                error_log("PIX code-only message sent to client {$client_data['name']}");
-                            }
-                        }
+                        $code_only_message = $payment_result['pix_code'];
+                        error_log("Sending PIX code-only message to client {$client_data['name']}: " . substr($code_only_message, 0, 20) . "...");
+                        $code_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $code_only_message);
                         
-                        // Registrar mensagem do PIX no histórico
-                        if ($pix_result['status_code'] == 200 || $pix_result['status_code'] == 201) {
-                            $pix_message_id = null;
-                            if (isset($pix_result['data']['key']['id'])) {
-                                $pix_message_id = cleanWhatsAppMessageId($pix_result['data']['key']['id']);
+                        // Registrar mensagem do código PIX no histórico
+                        if ($code_result['status_code'] == 200 || $code_result['status_code'] == 201) {
+                            $code_message_id = null;
+                            if (isset($code_result['data']['key']['id'])) {
+                                $code_message_id = cleanWhatsAppMessageId($code_result['data']['key']['id']);
                             }
                             
-                            $messageHistory->message = $pix_message;
-                            $messageHistory->whatsapp_message_id = $pix_message_id;
+                            $messageHistory->message = $code_only_message;
+                            $messageHistory->whatsapp_message_id = $code_message_id;
                             $messageHistory->status = 'sent';
                             $messageHistory->payment_id = $payment_id;
                             $messageHistory->create();
                             
-                            error_log("PIX code message sent to client {$client_data['name']}");
-                        } else {
-                            error_log("Failed to send PIX code message to client {$client_data['name']}");
+                            error_log("PIX code-only message sent to client {$client_data['name']}");
                         }
+                        
                     }
                 } else {
                     error_log("Failed to generate payment for client {$client_data['name']}: " . $payment_result['error']);
