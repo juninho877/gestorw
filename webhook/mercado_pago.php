@@ -32,6 +32,7 @@ try {
     require_once __DIR__ . '/../classes/WhatsAppAPI.php';
     require_once __DIR__ . '/../classes/MessageTemplate.php';
     require_once __DIR__ . '/../classes/Client.php';
+    require_once __DIR__ . '/cleanWhatsAppMessageId.php';
     
     // Verificar se é uma requisição POST
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -318,6 +319,7 @@ function sendClientPaymentConfirmation($clientPayment, $db) {
             if (isset($result['data']['key']['id'])) {
                 $raw_id = $result['data']['key']['id'];
                 $messageHistory->whatsapp_message_id = cleanWhatsAppMessageId($raw_id);
+                error_log("Raw WhatsApp message ID: '$raw_id', Cleaned: " . $messageHistory->whatsapp_message_id);
             }
             
             $messageHistory->create();

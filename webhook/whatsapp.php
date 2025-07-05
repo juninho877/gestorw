@@ -47,6 +47,7 @@ try {
     require_once __DIR__ . '/../config/config.php';
     require_once __DIR__ . '/../config/database.php';
     require_once __DIR__ . '/../classes/MessageHistory.php';
+    require_once __DIR__ . '/cleanWhatsAppMessageId.php';
     
     // Verificar se é uma requisição POST
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -132,22 +133,6 @@ try {
     error_log("Webhook error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Internal server error']);
-}
-
-/**
- * Função para limpar ID da mensagem do WhatsApp removendo sufixos
- */
-function cleanWhatsAppMessageId($message_id) {
-    if (empty($message_id)) {
-        return null;
-    }
-    
-    // Remover sufixos como _0, _1, etc.
-    $cleaned_id = preg_replace('/_\d+$/', '', $message_id);
-    
-    error_log("Webhook - Cleaned WhatsApp message ID: '$message_id' -> '$cleaned_id'");
-    
-    return $cleaned_id;
 }
 
 /**
