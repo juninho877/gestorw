@@ -198,10 +198,11 @@ class User {
 
     public function readAll() {
         // Modificado para incluir as novas colunas
-        $query = "SELECT id, name, email, plan_id, role, whatsapp_instance, whatsapp_connected,
+        $query = "SELECT id, name, email, plan_id, role, whatsapp_instance, whatsapp_connected, 
                          notify_5_days_before, notify_3_days_before, notify_2_days_before, notify_1_day_before,
-                         notify_on_due_date, notify_1_day_after_due, trial_starts_at, trial_ends_at,
-                         subscription_status, plan_expires_at
+                         notify_on_due_date, notify_1_day_after_due, trial_starts_at, trial_ends_at, 
+                         subscription_status, plan_expires_at, mp_access_token, mp_public_key,
+                         payment_method_preference, manual_pix_key
                   FROM " . $this->table_name . " 
                   WHERE whatsapp_instance IS NOT NULL AND whatsapp_connected = 1
                   ORDER BY id ASC";
