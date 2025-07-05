@@ -129,6 +129,12 @@ if ($_POST) {
 // Buscar todos os planos
 $plans_stmt = $plan->readAll();
 $plans = $plans_stmt->fetchAll();
+
+// Debug: Log the number of plans and their details
+error_log("Total plans found: " . count($plans));
+foreach ($plans as $index => $plan_data) {
+    error_log("Plan #{$index}: ID={$plan_data['id']}, Name={$plan_data['name']}, Price={$plan_data['price']}, Display Order={$plan_data['display_order']}");
+}
 error_log("Plans fetched: " . print_r($plans, true));
 
 // Buscar contagem de usuários por plano
