@@ -1,4 +1,6 @@
 <?php
+debug($plans);
+?>
 require_once __DIR__ . '/auth_check.php'; // Middleware de autenticação
 require_once __DIR__ . '/../classes/Plan.php';
 
