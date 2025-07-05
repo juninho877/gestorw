@@ -158,20 +158,21 @@ try {
                     // Enviar mensagem de confirmação para o cliente
                     $payment_obj->readOne(); // Recarregar dados completos
                     
-                    // Carregar dados completos do usuário e cliente para ter acesso às informações necessárias
+                    // Carregar dados completos do usuário para ter acesso às informações necessárias
                     $user_obj = new User($db);
                     $user_obj->id = $payment_row['user_id'];
                     
                     if ($user_obj->readOne()) {
                         error_log("User WhatsApp status: instance=" . $user_obj->whatsapp_instance . ", connected=" . ($user_obj->whatsapp_connected ? 'true' : 'false'));
                         
-                        // Garantir que temos os dados completos do cliente
-                        if (!isset($client->name) || empty($client->name)) {
-                            $client->readOne();
-                        }
-                        
                         // Enviar mensagem de confirmação
                         if ($user_obj->whatsapp_connected && !empty($user_obj->whatsapp_instance)) {
+                            // Garantir que temos os dados completos do cliente
+                            if (!isset($client->name) || empty($client->name)) {
+                                $client->readOne();
+                                error_log("Client data loaded: " . $client->name . ", phone: " . $client->phone);
+                            }
+                            
                             $result = $payment_obj->sendConfirmationMessage($client, $user_obj);
                             if ($result) {
                                 error_log("Payment confirmation message sent and recorded for client " . $client->name);

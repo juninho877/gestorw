@@ -350,10 +350,14 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
         $messageHistory->message = $message_text;
         $messageHistory->phone = $client_data['phone'];
         $messageHistory->whatsapp_message_id = $whatsapp_message_id;
-        $messageHistory->status = ($result['status_code'] == 200 || $result['status_code'] == 201) ? 'sent' : 'failed';
-        $messageHistory->payment_id = null;
+        $messageHistory->status = ($result['status_code'] == 200 || $result['status_code'] == 201) ? 'sent' : 'failed'; 
+        $messageHistory->payment_id = null; // Must be null to avoid foreign key constraint violation
         
-        $messageHistory->create();
+        if ($messageHistory->create()) {
+            error_log("Automated message history created successfully for client: " . $client_data['name']);
+        } else {
+            error_log("Failed to create automated message history for client: " . $client_data['name']);
+        }
         
         // Se a mensagem principal falhou, não enviar as mensagens de pagamento
         if ($messageHistory->status !== 'sent') {
