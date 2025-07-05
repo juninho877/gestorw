@@ -130,22 +130,25 @@ if ($_POST) {
 $query = "SELECT * FROM plans ORDER BY display_order ASC, price ASC";
 $stmt = $db->prepare($query);
 $stmt->execute();
-$plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$all_plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Debug para verificar os planos retornados
-$total_plans = count($plans);
-error_log("Total plans found: " . $total_plans);
+// Filtrar planos para garantir que não haja duplicatas
+$plans = [];
+$plan_ids = [];
+
+foreach ($all_plans as $plan_data) {
+    if (!in_array($plan_data['id'], $plan_ids)) {
+        $plans[] = $plan_data;
+        $plan_ids[] = $plan_data['id'];
+    }
+}
 
 // Buscar contagem de usuários por plano
 foreach ($plans as $index => &$plan_row) {
-    error_log("Plan #{$index}: ID={$plan_row['id']}, Name={$plan_row['name']}, Price={$plan_row['price']}, Display Order={$plan_row['display_order']}");
-    
     $plan_obj = new Plan($db);
     $plan_obj->id = $plan_row['id'];
     $plan_row['users_count'] = $plan_obj->getUsersCount();
 }
-
-error_log("Plans fetched: " . print_r($plans, true));
 
 // Se está editando um plano
 $editing_plan = null;
