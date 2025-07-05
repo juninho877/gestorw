@@ -8,6 +8,7 @@ require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/classes/User.php';
 require_once __DIR__ . '/classes/Payment.php';
+require_once __DIR__ . '/classes/Client.php';
 require_once __DIR__ . '/classes/ClientPayment.php';
 require_once __DIR__ . '/classes/MercadoPagoAPI.php';
 require_once __DIR__ . '/classes/AppSettings.php';
