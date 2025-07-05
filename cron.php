@@ -423,6 +423,7 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                         $code_only_message = $payment_result['pix_code'];
                         error_log("Sending PIX code-only message to client {$client_data['name']} (length: " . strlen($code_only_message) . ")");
                         error_log("PIX code preview: " . substr($code_only_message, 0, 30) . "...");
+                        error_log("PIX code preview: " . substr($code_only_message, 0, 30) . "...");
                         $code_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $code_only_message);
                         
                         // Registrar mensagem do código PIX no histórico
