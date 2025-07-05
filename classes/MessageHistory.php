@@ -12,6 +12,7 @@ class MessageHistory {
     public $message;
     public $phone;
     public $status;
+    public $payment_id;
     public $whatsapp_message_id;
     public $sent_at;
 
@@ -22,7 +23,8 @@ class MessageHistory {
     public function create() {
         $query = "INSERT INTO " . $this->table_name . " 
                   SET user_id=:user_id, client_id=:client_id, template_id=:template_id, 
-                      message=:message, phone=:phone, status=:status, whatsapp_message_id=:whatsapp_message_id";
+                      message=:message, phone=:phone, status=:status, whatsapp_message_id=:whatsapp_message_id,
+                      payment_id=:payment_id";
         
         $stmt = $this->conn->prepare($query);
         
@@ -33,6 +35,7 @@ class MessageHistory {
         $stmt->bindParam(":phone", $this->phone);
         $stmt->bindParam(":status", $this->status);
         $stmt->bindParam(":whatsapp_message_id", $this->whatsapp_message_id);
+        $stmt->bindParam(":payment_id", $this->payment_id);
         
         if($stmt->execute()) {
             $this->id = $this->conn->lastInsertId();
