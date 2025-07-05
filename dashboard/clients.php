@@ -112,6 +112,61 @@ if ($_POST) {
                     if ($client->readOne()) {
                         if ($client->markPaymentReceived()) {
                             $_SESSION['message'] = "Pagamento marcado como recebido!";
+                            
+                            // Enviar mensagem de confirmação para o cliente
+                            if ($_SESSION['whatsapp_connected']) {
+                                require_once __DIR__ . '/../classes/MessageTemplate.php';
+                                require_once __DIR__ . '/../classes/MessageHistory.php';
+                                require_once __DIR__ . '/../classes/WhatsAppAPI.php';
+                                
+                                $template = new MessageTemplate($db);
+                                $messageHistory = new MessageHistory($db);
+                                $whatsapp = new WhatsAppAPI();
+                                
+                                // Buscar template de confirmação de pagamento
+                                $template->user_id = $_SESSION['user_id'];
+                                $message_text = '';
+                                $template_id = null;
+                                
+                                if ($template->readByType($_SESSION['user_id'], 'payment_confirmed')) {
+                                    $message_text = $template->message;
+                                    $template_id = $template->id;
+                                } else {
+                                    // Template padrão se não encontrar
+                                    $message_text = "Olá {nome}! Recebemos seu pagamento de {valor} em {data_pagamento} com sucesso. Seu novo vencimento é {novo_vencimento}. Obrigado! 👍";
+                                }
+                                
+                                // Personalizar mensagem
+                                $message_text = str_replace('{nome}', $client->name, $message_text);
+                                $message_text = str_replace('{valor}', 'R$ ' . number_format($client->subscription_amount, 2, ',', '.'), $message_text);
+                                $message_text = str_replace('{data_pagamento}', date('d/m/Y'), $message_text);
+                                $message_text = str_replace('{novo_vencimento}', date('d/m/Y', strtotime($client->due_date)), $message_text);
+                                
+                                // Enviar mensagem
+                                $result = $whatsapp->sendMessage($_SESSION['whatsapp_instance'], $client->phone, $message_text);
+                                
+                                // Registrar no histórico
+                                if ($result['status_code'] == 200 || $result['status_code'] == 201) {
+                                    $messageHistory->user_id = $_SESSION['user_id'];
+                                    $messageHistory->client_id = $client->id;
+                                    $messageHistory->template_id = $template_id;
+                                    $messageHistory->message = $message_text;
+                                    $messageHistory->phone = $client->phone;
+                                    $messageHistory->status = 'sent';
+                                    $messageHistory->payment_id = null;
+                                    
+                                    // Extrair e limpar ID da mensagem do WhatsApp se disponível
+                                    if (isset($result['data']['key']['id'])) {
+                                        $raw_id = $result['data']['key']['id'];
+                                        require_once __DIR__ . '/../webhook/cleanWhatsAppMessageId.php';
+                                        $messageHistory->whatsapp_message_id = cleanWhatsAppMessageId($raw_id);
+                                    }
+                                    
+                                    $messageHistory->create();
+                                    
+                                    $_SESSION['message'] .= " Mensagem de confirmação enviada para o cliente.";
+                                }
+                            }
                         } else {
                             $_SESSION['error'] = "Erro ao marcar pagamento.";
                         }

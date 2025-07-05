@@ -150,6 +150,19 @@ try {
                     $paid_at = $mp_status['date_approved'] ?: date('Y-m-d H:i:s');
                     $payment_obj->updateStatus('approved', $paid_at);
                     
+                    // Atualizar a data de vencimento do cliente
+                    $client = new Client($db);
+                    $client->id = $payment_row['client_id'];
+                    $client->user_id = $payment_row['user_id'];
+                    
+                    if ($client->readOne()) {
+                        // Marcar pagamento como recebido e atualizar data de vencimento
+                        $client->markPaymentReceived($paid_at);
+                        error_log("Client due date updated after payment. New due date: " . $client->due_date);
+                    } else {
+                        error_log("Client not found for payment: " . $payment_row['client_id']);
+                    }
+                    
                     // Enviar mensagem de confirmação para o cliente
                     $payment_obj->readOne(); // Recarregar dados completos
                     sendClientPaymentConfirmation($payment_obj, $db);
@@ -347,6 +360,16 @@ function sendClientPaymentConfirmation($clientPayment, $db) {
         $message_text = str_replace('{nome}', $client['name'], $message_text);
         $message_text = str_replace('{valor}', 'R$ ' . number_format($clientPayment->amount, 2, ',', '.'), $message_text);
         $message_text = str_replace('{data_pagamento}', date('d/m/Y', strtotime($clientPayment->paid_at)), $message_text);
+        
+        // Buscar a data de vencimento atualizada do cliente
+        $client_obj = new Client($db);
+        $client_obj->id = $client['id'];
+        $client_obj->user_id = $clientPayment->user_id;
+        
+        if ($client_obj->readOne()) {
+            // Adicionar a nova data de vencimento à mensagem
+            $message_text = str_replace('{novo_vencimento}', date('d/m/Y', strtotime($client_obj->due_date)), $message_text);
+        }
         
         // Enviar mensagem
         $whatsapp = new WhatsAppAPI();

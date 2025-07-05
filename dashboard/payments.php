@@ -54,6 +54,33 @@ if ($_POST) {
                         $payment->id = $payment_id;
                         $payment->updateStatus('approved', date('Y-m-d H:i:s'));
                         
+                        // Buscar dados do pagamento
+                        $payment->readOne();
+                        
+                        // Se for um pagamento de cliente, atualizar a data de vencimento
+                        if ($payment_data['client_id']) {
+                            // Atualizar a data de vencimento do cliente
+                            $client = new Client($db);
+                            $client->id = $payment_data['client_id'];
+                            $client->user_id = $payment_data['user_id'];
+                            
+                            if ($client->readOne()) {
+                                // Marcar pagamento como recebido e atualizar data de vencimento
+                                $client->markPaymentReceived(date('Y-m-d H:i:s'));
+                                
+                                // Enviar mensagem de confirmação para o cliente
+                                require_once __DIR__ . '/../webhook/mercado_pago.php';
+                                $clientPayment = new ClientPayment($db);
+                                $clientPayment->id = $payment_id;
+                                $clientPayment->client_id = $client->id;
+                                $clientPayment->user_id = $payment_data['user_id'];
+                                $clientPayment->amount = $payment_data['amount'];
+                                $clientPayment->paid_at = date('Y-m-d H:i:s');
+                                
+                                sendClientPaymentConfirmation($clientPayment, $db);
+                            }
+                        }
+                        
                         // Ativar assinatura do usuário
                         $user = new User($db);
                         $user->id = $payment_data['user_id'];

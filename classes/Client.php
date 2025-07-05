@@ -201,13 +201,24 @@ class Client {
     // Método para marcar pagamento como recebido
     public function markPaymentReceived($payment_date = null) {
         if ($payment_date === null) {
-            $payment_date = date('Y-m-d');
+            $payment_date = date('Y-m-d'); // Usar data atual se não for fornecida
         }
         
         $this->last_payment_date = $payment_date;
         
-        // Calcular próxima data de pagamento (30 dias após o pagamento)
-        $this->next_payment_date = date('Y-m-d', strtotime($payment_date . ' + 30 days'));
+        // Calcular próxima data de vencimento com base na regra especificada
+        $today = date('Y-m-d');
+        
+        // Se a data de vencimento atual for maior que a data de hoje (vencimento futuro)
+        if (!empty($this->due_date) && $this->due_date > $today) {
+            // Adicionar um mês à data de vencimento atual
+            $this->next_payment_date = date('Y-m-d', strtotime($this->due_date . ' + 1 month'));
+        } else {
+            // Se já estiver vencido ou for hoje, adicionar um mês à data de hoje
+            $this->next_payment_date = date('Y-m-d', strtotime($today . ' + 1 month'));
+        }
+        
+        // Atualizar a data de vencimento para a próxima data de pagamento
         $this->due_date = $this->next_payment_date;
         
         return $this->update();
