@@ -388,8 +388,10 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
                                                             class="text-blue-600 hover:text-blue-900 p-2 rounded-full hover:bg-gray-200 transition duration-150">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
-                                                    <button onclick="deleteTemplate(<?php echo $template_row['id']; ?>, '<?php echo htmlspecialchars($template_row['name']); ?>')" 
-                                                            class="text-red-600 hover:text-red-900 p-2 rounded-full hover:bg-gray-200 transition duration-150">
+                                                    <button type="button" 
+                                                            class="text-red-600 hover:text-red-900 p-2 rounded-full hover:bg-gray-200 transition duration-150 delete-template-btn"
+                                                            data-id="<?php echo $template_row['id']; ?>"
+                                                            data-name="<?php echo htmlspecialchars($template_row['name']); ?>">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </div>
