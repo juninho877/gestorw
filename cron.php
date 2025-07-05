@@ -396,6 +396,31 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
                         $pix_message = "Para pagar, use o código PIX abaixo no aplicativo do seu banco:\n\n" . $payment_result['pix_code'];
                         $pix_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $pix_message);
                         
+                        // Delay entre mensagens
+                        sleep(2);
+                        
+                        // Enviar o código PIX em uma mensagem separada para facilitar a cópia
+                        if ($pix_result['status_code'] == 200 || $pix_result['status_code'] == 201) {
+                            $code_only_message = $payment_result['pix_code'];
+                            $code_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $code_only_message);
+                            
+                            // Registrar mensagem do código PIX no histórico
+                            if ($code_result['status_code'] == 200 || $code_result['status_code'] == 201) {
+                                $code_message_id = null;
+                                if (isset($code_result['data']['key']['id'])) {
+                                    $code_message_id = cleanWhatsAppMessageId($code_result['data']['key']['id']);
+                                }
+                                
+                                $messageHistory->message = $code_only_message;
+                                $messageHistory->whatsapp_message_id = $code_message_id;
+                                $messageHistory->status = 'sent';
+                                $messageHistory->payment_id = $payment_id;
+                                $messageHistory->create();
+                                
+                                error_log("PIX code-only message sent to client {$client_data['name']}");
+                            }
+                        }
+                        
                         // Registrar mensagem do PIX no histórico
                         if ($pix_result['status_code'] == 200 || $pix_result['status_code'] == 201) {
                             $pix_message_id = null;
@@ -427,6 +452,31 @@ function sendAutomaticMessage($whatsapp, $template, $messageHistory, $user_id, $
             // Enviar mensagem com a chave PIX manual
             $pix_message = "Para realizar o pagamento, faça um PIX para a chave:\n\n" . $user_data['manual_pix_key'] . "\n\nApós o pagamento, por favor, envie o comprovante para confirmarmos.";
             $pix_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $pix_message);
+            
+            // Delay entre mensagens
+            sleep(2);
+            
+            // Enviar a chave PIX em uma mensagem separada para facilitar a cópia
+            if ($pix_result['status_code'] == 200 || $pix_result['status_code'] == 201) {
+                $key_only_message = $user_data['manual_pix_key'];
+                $key_result = $whatsapp->sendMessage($instance_name, $client_data['phone'], $key_only_message);
+                
+                // Registrar mensagem da chave PIX no histórico
+                if ($key_result['status_code'] == 200 || $key_result['status_code'] == 201) {
+                    $key_message_id = null;
+                    if (isset($key_result['data']['key']['id'])) {
+                        $key_message_id = cleanWhatsAppMessageId($key_result['data']['key']['id']);
+                    }
+                    
+                    $messageHistory->message = $key_only_message;
+                    $messageHistory->whatsapp_message_id = $key_message_id;
+                    $messageHistory->status = 'sent';
+                    $messageHistory->payment_id = null;
+                    $messageHistory->create();
+                    
+                    error_log("PIX key-only message sent to client {$client_data['name']}");
+                }
+            }
             
             // Registrar mensagem da chave PIX no histórico
             if ($pix_result['status_code'] == 200 || $pix_result['status_code'] == 201) {
