@@ -330,7 +330,7 @@ class ClientPayment {
                 $messageHistory->message = $message_text;
                 $messageHistory->phone = $client->phone;
                 $messageHistory->status = 'sent';
-                $messageHistory->payment_id = $this->id;
+                $messageHistory->payment_id = null; // Set to null to avoid foreign key constraint violation
                 
                 error_log("Creating message history record for payment confirmation");
                 
@@ -342,9 +342,9 @@ class ClientPayment {
                 }
                 
                 if ($messageHistory->create()) {
-                    error_log("Message history record created successfully with ID: " . $messageHistory->id);
+                    error_log("Message history record created successfully with ID: " . $messageHistory->id . " for client payment ID: " . $this->id);
                 } else {
-                    error_log("Failed to create message history record");
+                    error_log("Failed to create message history record. Error info: " . json_encode($this->conn->errorInfo()));
                 }
                 
                 error_log("Payment confirmation message sent to client {$client->name}");

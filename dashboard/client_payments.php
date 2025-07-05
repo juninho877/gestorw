@@ -183,7 +183,7 @@ if ($_POST) {
                                 $messageHistory->message = $message_text;
                                 $messageHistory->phone = $client->phone;
                                 $messageHistory->status = 'sent';
-                                $messageHistory->payment_id = null;
+                                $messageHistory->payment_id = null; // Must be null to avoid foreign key constraint violation
                                 
                                 // Extrair e limpar ID da mensagem do WhatsApp se disponível
                                 if (isset($result['data']['key']['id'])) {
@@ -192,7 +192,11 @@ if ($_POST) {
                                     $messageHistory->whatsapp_message_id = cleanWhatsAppMessageId($raw_id);
                                 }
                                 
-                                $messageHistory->create();
+                                if ($messageHistory->create()) {
+                                    error_log("Payment confirmation message history created successfully");
+                                } else {
+                                    error_log("Failed to create payment confirmation message history");
+                                }
                                 
                                 $_SESSION['message'] = "Pagamento marcado como recebido! Data de vencimento atualizada e mensagem de confirmação enviada.";
                             } else {

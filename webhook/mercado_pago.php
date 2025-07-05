@@ -330,7 +330,7 @@ function sendClientPaymentConfirmation($clientPayment, $db) {
             $messageHistory->message = $message_text;
             $messageHistory->phone = $client->phone;
             $messageHistory->status = 'sent'; 
-            $messageHistory->payment_id = $clientPayment->id; // Link to the payment
+            $messageHistory->payment_id = null; // Set to null to avoid foreign key constraint violation
             
             // Extrair e limpar ID da mensagem do WhatsApp se disponível
             if (isset($result['data']['key']['id'])) {
@@ -340,9 +340,9 @@ function sendClientPaymentConfirmation($clientPayment, $db) {
             }
             
             if ($messageHistory->create()) {
-                error_log("Message history record created successfully from webhook");
+                error_log("Message history record created successfully from webhook for client payment ID: " . $clientPayment->id);
             } else {
-                error_log("Failed to create message history record from webhook");
+                error_log("Failed to create message history record from webhook. Error info: " . json_encode($db->errorInfo()));
             }
             
             error_log("Payment confirmation message sent to client {$client->name}");

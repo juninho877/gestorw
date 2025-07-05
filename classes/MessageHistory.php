@@ -21,31 +21,41 @@ class MessageHistory {
     }
 
     public function create() {
-        $query = "INSERT INTO " . $this->table_name . " 
-                  SET user_id=:user_id, client_id=:client_id, template_id=:template_id, 
-                      message=:message, phone=:phone, status=:status, 
-                      whatsapp_message_id=:whatsapp_message_id, 
-                      payment_id=:payment_id";
-        
-        $stmt = $this->conn->prepare($query);
-        
-        $stmt->bindParam(":user_id", $this->user_id);
-        $stmt->bindParam(":client_id", $this->client_id);
-        $stmt->bindParam(":template_id", $this->template_id);
-        $stmt->bindParam(":message", $this->message);
-        $stmt->bindParam(":phone", $this->phone);
-        $stmt->bindParam(":status", $this->status);
-        $stmt->bindParam(":whatsapp_message_id", $this->whatsapp_message_id);
-        $stmt->bindParam(":payment_id", $this->payment_id);
-        
-        if($stmt->execute()) {
-            error_log("Message history created successfully for client ID: " . $this->client_id);
-            $this->id = $this->conn->lastInsertId();
-            return true;
+        try {
+            $query = "INSERT INTO " . $this->table_name . " 
+                      SET user_id=:user_id, client_id=:client_id, template_id=:template_id, 
+                          message=:message, phone=:phone, status=:status, 
+                          whatsapp_message_id=:whatsapp_message_id, 
+                          payment_id=:payment_id";
+            
+            $stmt = $this->conn->prepare($query);
+            
+            $stmt->bindParam(":user_id", $this->user_id);
+            $stmt->bindParam(":client_id", $this->client_id);
+            $stmt->bindParam(":template_id", $this->template_id);
+            $stmt->bindParam(":message", $this->message);
+            $stmt->bindParam(":phone", $this->phone);
+            $stmt->bindParam(":status", $this->status);
+            $stmt->bindParam(":whatsapp_message_id", $this->whatsapp_message_id);
+            $stmt->bindParam(":payment_id", $this->payment_id);
+            
+            error_log("Attempting to create message history with: user_id=" . $this->user_id . 
+                      ", client_id=" . $this->client_id . 
+                      ", payment_id=" . ($this->payment_id ?? 'NULL'));
+            
+            if($stmt->execute()) {
+                error_log("Message history created successfully for client ID: " . $this->client_id);
+                $this->id = $this->conn->lastInsertId();
+                return true;
+            }
+            
+            $errorInfo = $stmt->errorInfo();
+            error_log("Failed to create message history. SQL Error: " . $errorInfo[0] . ": " . $errorInfo[2]);
+            return false;
+        } catch (Exception $e) {
+            error_log("Exception creating message history: " . $e->getMessage());
+            return false;
         }
-        
-        error_log("Failed to create message history: " . implode(", ", $stmt->errorInfo()));
-        return false;
     }
 
     public function readAll($user_id, $limit = 50) {
