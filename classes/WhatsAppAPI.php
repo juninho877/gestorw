@@ -317,25 +317,22 @@ class WhatsAppAPI {
         error_log("Image base64 first 50 chars: " . substr($processedImage, 0, 50));
         error_log("Image base64 last 50 chars: " . substr($processedImage, -50));
         
-        // Payload para envio de imagem - estrutura simplificada
+        // Payload para envio de imagem usando o endpoint sendMedia
         $data = [
             'number' => $finalPhone,
-            'options' => [
-                'delay' => 1200,
-                'presence' => 'composing'
-            ],
-            'image' => [
-                'url' => 'data:image/png;base64,' . $processedImage
-            ],
-            'caption' => $caption
+            'mediatype' => 'image',
+            'mimetype' => 'image/png',
+            'caption' => $caption,
+            'media' => $processedImage,
+            'fileName' => 'qrcode_' . time() . '.png'
         ];
         
         // Log the structure of the payload without the full image data
         $logData = $data;
-        $logData['image']['url'] = '[BASE64_DATA_OMITTED]';
+        $logData['media'] = '[BASE64_DATA_OMITTED]';
         error_log("Image payload structure: " . json_encode($logData, JSON_PRETTY_PRINT));
         
-        $result = $this->makeRequest("/message/image/{$instanceName}", 'POST', $data);
+        $result = $this->makeRequest("/message/sendMedia/{$instanceName}", 'POST', $data);
         
         // Log the result
         if ($result['status_code'] >= 200 && $result['status_code'] < 300) {
